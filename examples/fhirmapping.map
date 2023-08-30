@@ -1,0 +1,22 @@
+map "http://emr.beda.software/StructureMap/extract-patient" = "extract-patinet"
+
+uses "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse" as source
+uses "http://hl7.org/fhir/StructureDefinition/Patient" as target
+
+group patientMap(source src : QuestionnaireResponse, target patient : Patient) {
+    src.item as item where linkId = 'name' -> patient.name = create("HumanName") as name then {
+        item.item as nItem where linkId = 'last-name' -> name.family = (%nItem.answer.value);
+        item.item as nItem where linkId = 'first-name' -> name.given = (%nItem.answer.value);
+        item.item as nItem where linkId = 'middle-name' -> name.given = (%nItem.answer.value);
+    };
+    src.item as item where linkId = 'birth-date' -> patient.birtDate = (%item.answer.value);
+    src.item as item where linkId = 'gender' -> patient.gender = (%item.answer.value.code);
+    src.item as item where linkId = 'mobile' -> patient.telecom = create("ContactPoint") as telecom then {
+        item -> telecom.system = 'phone';
+        item -> telecom.value = (%item.answer.value);
+    };
+    src.item as item where linkId = 'ssn' -> patient.identifier = create("Identifier") as identifier then {
+        item -> identifier.system = 'http://hl7.org/fhir/sid/us-ssn';
+        item -> identifier.value = (%item.answer.value);
+    };
+}

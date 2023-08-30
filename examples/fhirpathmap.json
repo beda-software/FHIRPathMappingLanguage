@@ -1,0 +1,26 @@
+{
+    "resourceType": "Patient",
+    "name": {
+        "{{ QuestionnaireResponse.item.where(linkId='name') }}": {
+            "family": "{{ item.where(linkId='last-name').answer.valueString }}",
+            "given": [
+                "{{ item.where(linkId='first-name').answer.valueString }}",
+                "{{ item.where(linkId='middle-name').answer.valueString }}"
+            ]
+        }
+    },
+    "birthDate": "{{ QuestionnaireResponse.item.where(linkId='birth-date').answer.value }}",
+    "gender": "{{ QuestionnaireResponse.item.where(linkId='gender').answer.valueCoding.code }}",
+    "telecom": [
+        {
+            "system": "phone",
+            "value": "{{ QuestionnaireResponse.item.where(linkId='mobile').answer.value }}"
+        }
+    ],
+    "identifier": [
+        {
+            "system": "http://hl7.org/fhir/sid/us-ssn",
+            "value": "{{ QuestionnaireResponse.item.where(linkId='ssn').answer.value }}"
+        }
+    ]
+}
