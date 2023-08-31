@@ -1,0 +1,19 @@
+{
+    "resourceType": "Bundle",
+    "type": "transaction",
+    "entry": [{
+        "request": {
+            "url": "{{ '/Patient/' + QuestionnaireResponse.repeat(item).where(linkId='patientId').answer.valueString }}",
+            "method": "PATCH"
+        },
+        "resource": {
+            "telecom": {
+                "{{ QuestionnaireResponse.repeat(item).where(linkId='phone-group') }}": {
+                    "system": "phone",
+                    "use": "{{ item.where(linkId='phone-type').answer.valueString }}",
+                    "value": "{{ item.where(linkId='phone-number').answer.valueString }}"
+                }
+            }
+        }
+    }]
+}
