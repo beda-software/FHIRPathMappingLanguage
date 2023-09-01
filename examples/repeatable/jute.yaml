@@ -1,31 +1,15 @@
-body:
-  type: transaction
-  entry:
-    - request:
-        url: >-
-          $ "/Patient/" +
-          fhirpath("QuestionnaireResponse.repeat(item).where(linkId='patientId').answer.valueString").0
-        method: PATCH
-      resource:
-        telecom:
-          $as: item
-          $map: >-
-            $
-            fhirpath("QuestionnaireResponse.repeat(item).where(linkId='phone-group')")
-          $body:
-            use: >-
-              $
-              fhirpath("%context.item.where(linkId='phone-type').answer.valueString",item).0
-            value: >-
-              $
-              fhirpath("%context.item.where(linkId='phone-number').answer.valueString",item).0
-            system: phone
-        resourceType: Patient
-  resourceType: Bundle
-id: demo-2
-resourceType: Mapping
-meta:
-  lastUpdated: '2023-08-31T07:18:56.909230Z'
-  createdAt: '2023-08-31T07:10:59.881158Z'
-  versionId: '3234'
-
+resourceType: Bundle
+type: transaction
+entry:
+  - request:
+      url: $ "/Patient/" +fhirpath("QuestionnaireResponse.repeat(item).where(linkId='patientId').answer.valueString").0
+      method: PATCH
+    resource:
+      resourceType: Patient
+      telecom:
+        $map: fhirpath("QuestionnaireResponse.repeat(item).where(linkId='phone-group')")
+        $as: item
+        $body:
+          use: $ fhirpath("%context.item.where(linkId='phone-type').answer.valueString",item).0
+          value: $ fhirpath("%context.item.where(linkId='phone-number').answer.valueString",item).0
+          system: phone
