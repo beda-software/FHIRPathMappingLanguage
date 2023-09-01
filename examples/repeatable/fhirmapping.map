@@ -1,0 +1,30 @@
+map "http://emr.beda.software/StructureMap/extract-telecom" = "extract-telecom"
+
+uses "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse" as source
+uses "http://hl7.org/fhir/StructureDefinition/Bundle" as target
+
+group patientMap(source src : QuestionnaireResponse, target bundle : Bundle) {
+  src -> bundle.type = 'transaction';
+  src.item as item where linkId = 'contacts' -> bundle.entry as entry then 
+      SetEntryData(item, entry);
+  //src -> bundle.entry as entry, entry.resource = create("Patient") as patient then
+}
+
+group SetEntryData(source src, target entry)
+{
+  src.item as item where linkId = 'patientId' -> entry.request as request then {
+    item -> request.method = 'PATCH';
+    item -> request.url = ('/Patient/'+%item.answer.value);
+  };
+  src -> entry.resource = create("Patient") as patient then {
+    src.item as item where linkId = 'phone-group'-> patient then SetContactPoint(item, patient);
+  };
+}
+
+group SetContactPoint(source src, target patient){
+  src -> patient.telecom = create("ContactPoint") as telecom then {
+    src -> telecom.system = 'phone';
+    src.item as item where linkId = 'phone-number' -> telecom.value = (%item.answer.value);
+    src.item as item where linkId = 'phone-type' -> telecom.use = (%item.answer.value);
+  };
+}
