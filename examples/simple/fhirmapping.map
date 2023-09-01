@@ -1,4 +1,4 @@
-map "http://emr.beda.software/StructureMap/extract-patient" = "extract-patinet"
+map "http://emr.beda.software/StructureMap/extract-patient" = "extract-patient"
 
 uses "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse" as source
 uses "http://hl7.org/fhir/StructureDefinition/Patient" as target
