@@ -8,7 +8,7 @@ class Template {
     template: object;
 }
 
-@Controller()
+@Controller('parse-template')
 export class AppController {
     constructor(private readonly appService: AppService) {}
 

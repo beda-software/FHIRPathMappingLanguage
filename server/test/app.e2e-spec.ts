@@ -17,7 +17,7 @@ describe('AppController (e2e)', () => {
 
     it('/ (GET)', () => {
         return request(app.getHttpServer())
-            .post('/').send({context: {resourceType: 'Patient', id: 'foo'}, template: {id: "{{ Patient.id }}"}})
+            .post('/parse-template').send({context: {resourceType: 'Patient', id: 'foo'}, template: {id: "{{ Patient.id }}"}})
             .expect(200)
             .expect({id: 'foo'});
     });
