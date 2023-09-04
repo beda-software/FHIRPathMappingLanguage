@@ -1,5 +1,5 @@
 import { QuestionnaireResponse } from 'fhir/r4b';
-import { resolveTemplate } from './extract';
+import { embededFHIRPath, resolveTemplate } from './extract';
 
 const qr: QuestionnaireResponse = {
     resourceType: 'QuestionnaireResponse',
@@ -154,4 +154,24 @@ describe('Extraction', () => {
     test('List transformation', () => {
         expect(resolveTemplate(qr, template2)).toStrictEqual(result);
     });
+    test('Partial strings', () => {
+        expect(resolveTemplate({
+            resourceType: "Patient",
+            id: "foo"
+        }, {reference: "Patient/{{Patient.id}}"})).toStrictEqual({reference: "Patient/foo"});
+    });
 });
+
+describe("Partial expression",() => {
+    test("Search partial expression", () => {
+        const {
+            before,
+            after,
+            expression,
+        } = embededFHIRPath("Patient/{{Patient.id}}");
+
+        expect(before).toBe("Patient/");
+        expect(expression).toBe("Patient.id");
+        expect(after).toBe("");
+    })
+})

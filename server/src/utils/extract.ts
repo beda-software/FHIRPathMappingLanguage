@@ -2,19 +2,36 @@ import { Resource } from 'fhir/r4b';
 import * as fhirpath from 'fhirpath';
 import * as fhirpath_r4_model from 'fhirpath/fhir-context/r4';
 
-function embededFHIRPath(a: string): string | undefined {
-    if (a.startsWith('{{') && a.endsWith('}}')) {
-        return a.slice(2, a.length - 2);
+interface Embeded {
+    before: string;
+    after: string;
+    expression: string;
+}
+
+export function embededFHIRPath(a: string): (Embeded | undefined) {
+    const start = a.search("{{");
+    const stop = a.search("}}");
+    if(start === -1 || stop === -1){
+        return undefined;
     }
-    return undefined;
+
+    const before = a.slice(0, start);
+    const after = a.slice(stop+2);
+    const expression = a.slice(start+2,stop);
+    return {
+        before,
+        expression,
+        after,
+    };
 }
 
 export function resolveTemplate(qr: Resource, template: object): object {
     return iterateObject(template, (a) => {
         if (typeof a === 'object' && Object.keys(a).length == 1) {
             const key = Object.keys(a)[0]!;
-            const keyExpr = embededFHIRPath(key);
-            if (keyExpr) {
+            const embeded = embededFHIRPath(key);
+            if (embeded) {
+                const {expression: keyExpr} = embeded;
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const result: any[] = [];
                 const answers = fhirpath.evaluate(qr, keyExpr, {}, fhirpath_r4_model);
@@ -26,10 +43,10 @@ export function resolveTemplate(qr: Resource, template: object): object {
                 return a;
             }
         } else if (typeof a === 'string') {
-            const expr = embededFHIRPath(a);
-            if (expr) {
-                const result = fhirpath.evaluate(qr, expr, {}, fhirpath_r4_model)[0];
-                return result;
+            const embeded = embededFHIRPath(a);
+            if (embeded) {
+                const result = fhirpath.evaluate(qr, embeded.expression, {}, fhirpath_r4_model)[0];
+                return `${embeded.before}${result}${embeded.after}`;
             } else {
                 return a;
             }
