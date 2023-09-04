@@ -4,8 +4,13 @@ import { Resource } from 'fhir/r4b';
 
 
 class Template {
-    context: Record<string,Resource>;
+    context: Record<string,Resource> | Resource;
     template: object;
+}
+
+
+function containsQuestionnaireResponse(context: Template['context']): context is Record<string,Resource> {
+    return Object.keys(context).includes('QuestionnaireResponse');
 }
 
 @Controller('parse-template')
@@ -16,6 +21,11 @@ export class AppController {
     @HttpCode(200)
     resolveTemplate(@Body() body: Template): object {
         const {context, template} = body;
-        return this.appService.resolveTemplate(context.QuestionnaireResponse, template);
+        if (containsQuestionnaireResponse(context)){
+            return this.appService.resolveTemplate(context.QuestionnaireResponse, template);
+        } else {
+            return this.appService.resolveTemplate(context, template);
+        }
+
     }
 }

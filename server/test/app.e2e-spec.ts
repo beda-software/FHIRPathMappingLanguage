@@ -15,9 +15,25 @@ describe('AppController (e2e)', () => {
         await app.init();
     });
 
-    it('/ (GET)', () => {
+    it('Conver simple resource', () => {
         return request(app.getHttpServer())
-            .post('/parse-template').send({context: {resourceType: 'Patient', id: 'foo'}, template: {id: "{{ Patient.id }}"}})
+            .post('/parse-template').send({
+                context: {
+                    resourceType: 'Patient',
+                    id: 'foo'},
+                template: {id: "{{ Patient.id }}"}})
+            .expect(200)
+            .expect({id: 'foo'});
+    });
+
+
+    it('$extract', () => {
+        return request(app.getHttpServer())
+            .post('/parse-template').send({
+                context: {
+                    QuestionnaireResponse: {
+                        resourceType: 'QuestionnaireResponse', id: 'foo'}},
+                template: {id: "{{ QuestionnaireResponse.id }}"}})
             .expect(200)
             .expect({id: 'foo'});
     });
