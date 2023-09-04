@@ -4,7 +4,7 @@ import { Resource } from 'fhir/r4b';
 
 
 class Template {
-    context: Resource;
+    context: Record<string,Resource>;
     template: object;
 }
 
@@ -16,6 +16,6 @@ export class AppController {
     @HttpCode(200)
     resolveTemplate(@Body() body: Template): object {
         const {context, template} = body;
-        return this.appService.resolveTemplate(context, template);
+        return this.appService.resolveTemplate(context.QuestionnaireResponse, template);
     }
 }
