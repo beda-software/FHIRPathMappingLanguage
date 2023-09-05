@@ -46,7 +46,11 @@ export function resolveTemplate(qr: Resource, template: object): object {
             const embeded = embededFHIRPath(a);
             if (embeded) {
                 const result = fhirpath.evaluate(qr, embeded.expression, {}, fhirpath_r4_model)[0];
-                return `${embeded.before}${result}${embeded.after}`;
+                if(embeded.before || embeded.after){
+                    return `${embeded.before}${result}${embeded.after}`;
+                } else {
+                    return result;
+                }
             } else {
                 return a;
             }

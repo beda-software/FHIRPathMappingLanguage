@@ -21,11 +21,12 @@ export class AppController {
     @HttpCode(200)
     resolveTemplate(@Body() body: Template): object {
         const {context, template} = body;
+        let result:object;
         if (containsQuestionnaireResponse(context)){
-            return this.appService.resolveTemplate(context.QuestionnaireResponse, template);
+            result = this.appService.resolveTemplate(context.QuestionnaireResponse, template);
         } else {
-            return this.appService.resolveTemplate(context, template);
+            result = this.appService.resolveTemplate(context, template);
         }
-
+        return result;
     }
 }
