@@ -18,13 +18,6 @@ export function embededFHIRPath(a: string): (Embeded | undefined) {
     const before = a.slice(0, start);
     const after = a.slice(stop+2);
     const expression = a.slice(start+2,stop);
-    console.log(
-        {
-            before,
-            expression,
-            after,
-        }
-    )
     return {
         before,
         expression,
