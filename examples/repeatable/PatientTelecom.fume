@@ -1,0 +1,20 @@
+(  
+  /* create an AllergyIntolerance resource */
+  $patient := item.(
+    InstanceOf: Patient
+    * (item[linkId='phone-group']).telecom
+      * system = 'phone'
+      * use = item[linkId='phone-type'].answer.valueString
+      * value = item[linkId='phone-number'].answer.valueString
+  );
+
+  /* create a Bundle containing the resource */
+item.(
+    InstanceOf: Bundle
+    * type = 'transaction' /* change this to whatever bundle type you want */
+    * entry.request
+      * url = "/Patient/" & item[linkId='patientId'].answer.valueString
+      * method = "PATCH"
+    * entry.resource = $patient /* put the resource in the Bundle. It will automatically create the fullUrl */
+  );
+)
