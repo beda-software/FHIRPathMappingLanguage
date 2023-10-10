@@ -19,15 +19,15 @@ jobs:
 
       - name: Install dependencies
         run: yarn install
-        working-directory: server
+        working-directory: ts/server
 
       - name: Run tests
         run: yarn test
-        working-directory: server
+        working-directory: ts/server
 
       - name: Run tests
         run: yarn test:e2e
-        working-directory: server
+        working-directory: ts/server
 
   Publish:
     needs: Build
@@ -47,4 +47,4 @@ jobs:
       - run: >-
           docker buildx build --platform linux/arm64,linux/amd64
           --push --tag ${{ env.BUILD_IMAGE }} .
-        working-directory: server
+        working-directory: ts/server

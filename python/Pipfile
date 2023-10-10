@@ -1,0 +1,29 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+anaconda = "*"
+jedi = ">=0.18.0"
+json-rpc = ">=1.13.0"
+service-factory = ">=0.1.6"
+black = "*"
+autohooks = "*"
+autohooks-plugin-black = "*"
+autohooks-plugin-isort = "*"
+isort = "*"
+autoflake = "*"
+importmagic = "*"
+epc = "*"
+pep8 = "*"
+flake8 = "*"
+ipython = "*"
+
+[packages]
+fhirpathpy = {git = "https://github.com/beda-software/fhirpath-py.git",ref = "feature/dsl"}
+pydian = "*"
+pydantic = "*"
+
+[requires]
+python_version = "3.11"
