@@ -9,7 +9,6 @@
       }
     },
     {
-      "fullUrl": "urn:uuid:d4e70cd1-089e-58b2-8e14-8851dce3f3b9",
       "resource": {
         "resourceType": "Patient",
         "telecom": [
