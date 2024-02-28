@@ -175,3 +175,19 @@ describe("Partial expression",() => {
         expect(after).toBe("");
     })
 })
+
+describe("Context usage", () => {
+    test("use context", () => {
+
+        expect(resolveTemplate(
+            {foo: "bar",
+             list: [{key: "a"}, {key: "b"}, {key: "c"}]} as any,
+            {list : {"{{ list }}": {key: "{{ key }}", "foo": "{{ %root.foo }}"}}}
+        )).toStrictEqual({
+            list: [
+                {key: "a", foo: "bar"},
+                {key: "b", foo: "bar"},
+                {key: "c", foo: "bar"},
+            ]});
+    })
+})

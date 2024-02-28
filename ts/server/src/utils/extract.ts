@@ -26,6 +26,9 @@ export function embededFHIRPath(a: string): (Embeded | undefined) {
 }
 
 export function resolveTemplate(qr: Resource, template: object): object {
+    return resolveTemplateRecur(qr, {root: qr}, template);
+}
+function resolveTemplateRecur(qr: Resource, context: object , template: object): object {
     return iterateObject(template, (a) => {
         if (typeof a === 'object' && Object.keys(a).length == 1) {
             const key = Object.keys(a)[0]!;
@@ -34,9 +37,9 @@ export function resolveTemplate(qr: Resource, template: object): object {
                 const {expression: keyExpr} = embeded;
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const result: any[] = [];
-                const answers = fhirpath.evaluate(qr, keyExpr, {}, fhirpath_r4_model);
+                const answers = fhirpath.evaluate(qr, keyExpr, context, fhirpath_r4_model);
                 for (const c of answers) {
-                    result.push(resolveTemplate(c, a[key]));
+                    result.push(resolveTemplateRecur(c, context, a[key]));
                 }
                 return result;
             } else {
@@ -45,7 +48,7 @@ export function resolveTemplate(qr: Resource, template: object): object {
         } else if (typeof a === 'string') {
             const embeded = embededFHIRPath(a);
             if (embeded) {
-                const result = fhirpath.evaluate(qr, embeded.expression, {}, fhirpath_r4_model)[0];
+                const result = fhirpath.evaluate(qr, embeded.expression, context, fhirpath_r4_model)[0];
                 if(embeded.before || embeded.after){
                     return `${embeded.before}${result}${embeded.after}`;
                 } else {
