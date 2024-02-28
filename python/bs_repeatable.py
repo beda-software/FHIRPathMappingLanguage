@@ -25,7 +25,7 @@ def map(qr: QuestionnaireResponse) -> Bundle:
                         url="/Patient/"
                         + dsl.QuestionnaireResponse.repeat("item")
                         .where(linkId="patientId")
-                        .answer.valueSteing,
+                        .answer.valueString,
                         method="PATCH",
                     ),
                     resource=Patient(
