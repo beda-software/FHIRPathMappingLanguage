@@ -17,43 +17,56 @@ describe('AppController (e2e)', () => {
 
     it('Conver simple resource', () => {
         return request(app.getHttpServer())
-            .post('/parse-template').send({
+            .post('/parse-template')
+            .send({
                 context: {
                     resourceType: 'Patient',
-                    id: 'foo'},
-                template: {id: "{{ Patient.id }}"}})
+                    id: 'foo',
+                },
+                template: { id: '{{ Patient.id }}' },
+            })
             .expect(200)
-            .expect({id: 'foo'});
+            .expect({ id: 'foo' });
     });
-
 
     it('$extract', () => {
         return request(app.getHttpServer())
-            .post('/parse-template').send({
+            .post('/parse-template')
+            .send({
                 context: {
                     QuestionnaireResponse: {
-                        resourceType: 'QuestionnaireResponse', id: 'foo'}},
-                template: {id: "{{ QuestionnaireResponse.id }}"}})
+                        resourceType: 'QuestionnaireResponse',
+                        id: 'foo',
+                    },
+                },
+                template: { id: '{{ QuestionnaireResponse.id }}' },
+            })
             .expect(200)
-            .expect({id: 'foo'});
+            .expect({ id: 'foo' });
     });
 
     it('handle nested data', () => {
         return request(app.getHttpServer())
-            .post('/parse-template').send({
+            .post('/parse-template')
+            .send({
                 context: {},
-                template: {foo: {bar: {baz: 1}}}})
+                template: { foo: { bar: { baz: 1 } } },
+            })
             .expect(200)
-            .expect({foo: {bar: {baz: 1}}});
-    })
+            .expect({ foo: { bar: { baz: 1 } } });
+    });
 
     it('handle nested result', () => {
         return request(app.getHttpServer())
-            .post('/parse-template').send({
-                context: {resourceType: "Patient",
-                          id: {foo: {bar: {baz: 1}}}},
-                template: {id: "{{Patient.id}}"}})
+            .post('/parse-template')
+            .send({
+                context: {
+                    resourceType: 'Patient',
+                    id: { foo: { bar: { baz: 1 } } },
+                },
+                template: { id: '{{Patient.id}}' },
+            })
             .expect(200)
-            .expect({id: {foo: {bar: {baz: 1}}}});
-    })
+            .expect({ id: { foo: { bar: { baz: 1 } } } });
+    });
 });

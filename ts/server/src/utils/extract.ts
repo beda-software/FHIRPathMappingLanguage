@@ -8,16 +8,16 @@ interface Embeded {
     expression: string;
 }
 
-export function embededFHIRPath(a: string): (Embeded | undefined) {
-    const start = a.search("{{");
-    const stop = a.search("}}");
-    if(start === -1 || stop === -1){
+export function embededFHIRPath(a: string): Embeded | undefined {
+    const start = a.search('{{');
+    const stop = a.search('}}');
+    if (start === -1 || stop === -1) {
         return undefined;
     }
 
     const before = a.slice(0, start);
-    const after = a.slice(stop+2);
-    const expression = a.slice(start+2,stop);
+    const after = a.slice(stop + 2);
+    const expression = a.slice(start + 2, stop);
     return {
         before,
         expression,
@@ -26,15 +26,15 @@ export function embededFHIRPath(a: string): (Embeded | undefined) {
 }
 
 export function resolveTemplate(qr: Resource, template: object): object {
-    return resolveTemplateRecur(qr, {root: qr}, template);
+    return resolveTemplateRecur(qr, { root: qr }, template);
 }
-function resolveTemplateRecur(qr: Resource, context: object , template: object): object {
+function resolveTemplateRecur(qr: Resource, context: object, template: object): object {
     return iterateObject(template, (a) => {
         if (typeof a === 'object' && Object.keys(a).length == 1) {
             const key = Object.keys(a)[0]!;
             const embeded = embededFHIRPath(key);
             if (embeded) {
-                const {expression: keyExpr} = embeded;
+                const { expression: keyExpr } = embeded;
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const result: any[] = [];
                 const answers = fhirpath.evaluate(qr, keyExpr, context, fhirpath_r4_model);
@@ -48,8 +48,13 @@ function resolveTemplateRecur(qr: Resource, context: object , template: object):
         } else if (typeof a === 'string') {
             const embeded = embededFHIRPath(a);
             if (embeded) {
-                const result = fhirpath.evaluate(qr, embeded.expression, context, fhirpath_r4_model)[0];
-                if(embeded.before || embeded.after){
+                const result = fhirpath.evaluate(
+                    qr,
+                    embeded.expression,
+                    context,
+                    fhirpath_r4_model,
+                )[0];
+                if (embeded.before || embeded.after) {
                     return `${embeded.before}${result}${embeded.after}`;
                 } else {
                     return result;

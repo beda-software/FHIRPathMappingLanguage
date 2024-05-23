@@ -155,39 +155,51 @@ describe('Extraction', () => {
         expect(resolveTemplate(qr, template2)).toStrictEqual(result);
     });
     test('Partial strings', () => {
-        expect(resolveTemplate({
-            resourceType: "Patient",
-            id: "foo"
-        }, {reference: "Patient/{{Patient.id}}"})).toStrictEqual({reference: "Patient/foo"});
+        expect(
+            resolveTemplate(
+                {
+                    resourceType: 'Patient',
+                    id: 'foo',
+                },
+                { reference: 'Patient/{{Patient.id}}' },
+            ),
+        ).toStrictEqual({ reference: 'Patient/foo' });
     });
 });
 
-describe("Partial expression",() => {
-    test("Search partial expression", () => {
-        const {
-            before,
-            after,
-            expression,
-        } = embededFHIRPath("Patient/{{Patient.id}}");
+describe('Partial expression', () => {
+    test('Search partial expression', () => {
+        const { before, after, expression } = embededFHIRPath('Patient/{{Patient.id}}');
 
-        expect(before).toBe("Patient/");
-        expect(expression).toBe("Patient.id");
-        expect(after).toBe("");
-    })
-})
+        expect(before).toBe('Patient/');
+        expect(expression).toBe('Patient.id');
+        expect(after).toBe('');
+    });
+});
 
-describe("Context usage", () => {
-    test("use context", () => {
-
-        expect(resolveTemplate(
-            {foo: "bar",
-             list: [{key: "a"}, {key: "b"}, {key: "c"}]} as any,
-            {list : {"{{ list }}": {key: "{{ key }}", "foo": "{{ %root.foo }}"}}}
-        )).toStrictEqual({
+describe('Context usage', () => {
+    test('use context', () => {
+        expect(
+            resolveTemplate(
+                {
+                    foo: 'bar',
+                    list: [{ key: 'a' }, { key: 'b' }, { key: 'c' }],
+                } as any,
+                {
+                    list: {
+                        '{{ list }}': {
+                            key: '{{ key }}',
+                            foo: '{{ %root.foo }}',
+                        },
+                    },
+                },
+            ),
+        ).toStrictEqual({
             list: [
-                {key: "a", foo: "bar"},
-                {key: "b", foo: "bar"},
-                {key: "c", foo: "bar"},
-            ]});
-    })
-})
+                { key: 'a', foo: 'bar' },
+                { key: 'b', foo: 'bar' },
+                { key: 'c', foo: 'bar' },
+            ],
+        });
+    });
+});

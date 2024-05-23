@@ -2,14 +2,14 @@ import { Controller, Post, Body, HttpCode } from '@nestjs/common';
 import { AppService } from './app.service';
 import { Resource } from 'fhir/r4b';
 
-
 class Template {
-    context: Record<string,Resource> | Resource;
+    context: Record<string, Resource> | Resource;
     template: object;
 }
 
-
-function containsQuestionnaireResponse(context: Template['context']): context is Record<string,Resource> {
+function containsQuestionnaireResponse(
+    context: Template['context'],
+): context is Record<string, Resource> {
     return Object.keys(context).includes('QuestionnaireResponse');
 }
 
@@ -20,9 +20,9 @@ export class AppController {
     @Post()
     @HttpCode(200)
     resolveTemplate(@Body() body: Template): object {
-        const {context, template} = body;
-        let result:object;
-        if (containsQuestionnaireResponse(context)){
+        const { context, template } = body;
+        let result: object;
+        if (containsQuestionnaireResponse(context)) {
             result = this.appService.resolveTemplate(context.QuestionnaireResponse, template);
         } else {
             result = this.appService.resolveTemplate(context, template);
