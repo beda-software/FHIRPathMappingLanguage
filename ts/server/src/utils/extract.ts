@@ -1,14 +1,14 @@
 import { Resource } from 'fhir/r4b';
 import * as fhirpath from 'fhirpath';
-import * as fhirpath_r4_model from 'fhirpath/fhir-context/r4';
 
-interface Embeded {
+interface Embedded {
     before: string;
     after: string;
     expression: string;
 }
 
-export function embededFHIRPath(a: string): Embeded | undefined {
+// TODO rewrite using regex and multiple embedding
+export function embeddedFHIRPath(a: string): Embedded | undefined {
     const start = a.search('{{');
     const stop = a.search('}}');
     if (start === -1 || stop === -1) {
@@ -25,77 +25,239 @@ export function embededFHIRPath(a: string): Embeded | undefined {
     };
 }
 
-export function resolveTemplate(qr: Resource, template: object): object {
-    return resolveTemplateRecur(qr, { root: qr }, template);
+export function resolveTemplate(qr: Resource, template: any, context?: any, model?: any): any {
+    return resolveTemplateRecur(qr, { rootNode: template }, context, model)['rootNode'];
 }
-function resolveTemplateRecur(qr: Resource, context: object, template: object): object {
-    return iterateObject(template, (a) => {
-        if (typeof a === 'object' && Object.keys(a).length == 1) {
-            const key = Object.keys(a)[0]!;
-            const embeded = embededFHIRPath(key);
-            if (embeded) {
-                const { expression: keyExpr } = embeded;
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const result: any[] = [];
-                const answers = fhirpath.evaluate(qr, keyExpr, context, fhirpath_r4_model);
-                for (const c of answers) {
-                    result.push(resolveTemplateRecur(c, context, a[key]));
+
+function resolveTemplateRecur(
+    resource: Resource,
+    template: any,
+    initialContext: object,
+    model: any,
+): any {
+    return iterateObject(template, initialContext, (node, context) => {
+        if (isPlainObject(node)) {
+            const { node: newNode, context: newContext } = processAssignBlock(
+                resource,
+                node,
+                context,
+                model,
+            );
+            const matchers = [matchForBlock, matchContextBlock, matchIfBlock, matchMergeBlock];
+            for (const matcher of matchers) {
+                const result = matcher(resource, newNode, newContext, model);
+
+                if (result) {
+                    return { node: result.node, context: newContext };
                 }
-                return result;
-            } else {
-                return a;
             }
-        } else if (typeof a === 'string') {
-            const embeded = embededFHIRPath(a);
-            if (embeded) {
-                const result = fhirpath.evaluate(
-                    qr,
-                    embeded.expression,
-                    context,
-                    fhirpath_r4_model,
-                )[0];
-                if (embeded.before || embeded.after) {
-                    return `${embeded.before}${result}${embeded.after}`;
-                } else {
-                    return result;
+
+            return { node: newNode, context: newContext };
+        } else if (typeof node === 'string') {
+            const embedded = embeddedFHIRPath(node);
+
+            if (embedded) {
+                const result =
+                    fhirpath.evaluate(resource, embedded.expression, context, model)[0] ?? null;
+                if (embedded.before || embedded.after) {
+                    return {
+                        node: `${embedded.before}${result}${embedded.after}`,
+                        context,
+                    };
                 }
-            } else {
-                return a;
+
+                return {
+                    node: result,
+                    context,
+                };
             }
         }
-        return a;
+
+        return { node, context };
     });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Transform = (a: any) => any;
+function processAssignBlock(resource: Resource, node: any, context: any, model: any) {
+    const extendedContext = { ...context };
+    const keys = Object.keys(node);
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function iterateObject(obj: object, transform: Transform): any {
-    if (Array.isArray(obj)) {
-        const transformedArray = [];
-        for (let i = 0; i < obj.length; i++) {
-            const value = obj[i];
-            if (typeof value === 'object') {
-                transformedArray.push(iterateObject(transform(value), transform));
-            } else {
-                transformedArray.push(transform(value));
-            }
+    const assignRegExp = /{%\s*assign\s*%}/;
+    const assignKey = keys.find((k) => k.match(assignRegExp));
+    if (assignKey) {
+        if (Array.isArray(node[assignKey])) {
+            node[assignKey].forEach((obj) => {
+                Object.entries(resolveTemplate(resource, obj, extendedContext, model)).forEach(
+                    ([key, value]) => {
+                        extendedContext[key] = value;
+                    },
+                );
+            });
+        } else if (isPlainObject(node[assignKey])) {
+            Object.entries(
+                resolveTemplate(resource, node[assignKey], extendedContext, model),
+            ).forEach(([key, value]) => {
+                extendedContext[key] = value;
+            });
+        } else {
+            throw new Error('Assign block must accept array or object');
         }
-        return transformedArray;
-    } else if (typeof obj === 'object') {
-        const transformedObject = {};
-        for (const key in obj) {
-            // eslint-disable-next-line no-prototype-builtins
-            if (obj.hasOwnProperty(key)) {
-                const value = obj[key];
-                if (typeof value === 'object') {
-                    transformedObject[key] = iterateObject(transform(value), transform);
-                } else {
-                    transformedObject[key] = transform(value);
-                }
-            }
-        }
-        return transformedObject;
+
+        return { node: omitKey(node, assignKey), context: extendedContext };
     }
+
+    return { node, context };
+}
+
+function matchForBlock(resource: Resource, node: any, context: any, model: any) {
+    const keys = Object.keys(node);
+
+    const forRegExp = /{%\s*for\s+(?:(\w+?)\s*,\s*)?(\w+?)\s+in\s+(.+?)\s*%}/;
+    const forKey = keys.find((k) => k.match(forRegExp));
+    if (forKey) {
+        if (keys.length > 1) {
+            throw new Error('For block must be presented as single key');
+        }
+
+        const matches = forKey.match(forRegExp);
+        const hasIndexKey = matches.length === 4;
+        const indexKey = hasIndexKey ? matches[1] : null;
+        const itemKey = hasIndexKey ? matches[2] : matches[1];
+        const expr = hasIndexKey ? matches[3] : matches[2];
+
+        const answers = fhirpath.evaluate(resource, expr, context, model);
+        return {
+            node: answers.map((answer, index) =>
+                resolveTemplate(
+                    resource,
+                    node[forKey],
+                    {
+                        ...context,
+                        [itemKey]: answer,
+                        ...(hasIndexKey ? { [indexKey]: index } : {}),
+                    },
+                    model,
+                ),
+            ),
+        };
+    }
+}
+
+function matchContextBlock(resource: Resource, node: any, context: any, model: any) {
+    const keys = Object.keys(node);
+
+    const contextRegExp = /{{\s*(.+?)\s*}}/;
+    const contextKey = keys.find((k) => k.match(contextRegExp));
+    if (contextKey) {
+        if (keys.length > 1) {
+            throw new Error('Context block must be presented as single key');
+        }
+        const matches = contextKey.match(contextRegExp);
+
+        const expr = matches[1];
+        const answers = fhirpath.evaluate(resource, expr, context, model);
+        const result: any[] = answers.map((answer) =>
+            resolveTemplate(answer, node[contextKey], context, model),
+        );
+
+        return { node: result };
+    }
+}
+
+function matchMergeBlock(resource: Resource, node: any, context: any, model: any) {
+    const keys = Object.keys(node);
+
+    const mergeRegExp = /{%\s*merge\s*%}/;
+    const mergehKey = keys.find((k) => k.match(mergeRegExp));
+    if (mergehKey) {
+        if (keys.length > 1) {
+            throw new Error('Merge block must be presented as single key');
+        }
+
+        return {
+            node: (Array.isArray(node[mergehKey]) ? node[mergehKey] : [node[mergehKey]]).reduce(
+                (mergeAcc, nodeValue) => {
+                    const result = resolveTemplate(resource, nodeValue, context, model);
+                    if (!isPlainObject(result) && result !== null) {
+                        throw new Error('Merge block must contain object');
+                    }
+
+                    return { ...mergeAcc, ...(result || {}) };
+                },
+                omitKey(node, mergehKey),
+            ),
+        };
+    }
+}
+
+function matchIfBlock(resource: Resource, node: any, context: any, model: any) {
+    const keys = Object.keys(node);
+
+    const ifRegExp = /{%\s*if\s+(.+?)\s*%}/;
+    const elseRegExp = /{%\s*else\s*%}/;
+    const ifKey = keys.find((k) => k.match(ifRegExp));
+
+    if (ifKey) {
+        const elseKey = keys.find((k) => k.match(elseRegExp));
+
+        const maxKeysCount = elseKey ? 2 : 1;
+        if (keys.length > maxKeysCount) {
+            throw new Error('If block must contain only if and optional else keys');
+        }
+
+        const matches = ifKey.match(ifRegExp);
+        const expr = matches[1];
+
+        const answers = fhirpath.evaluate(resource, expr, context, model);
+        if (answers.length !== 1) {
+            throw new Error('If block must accept expression that returns single boolean value');
+        }
+
+        const answer = answers[0];
+        if (typeof answer !== 'boolean') {
+            throw new Error('If block must accept expression that returns single boolean value');
+        }
+
+        return {
+            node: answer
+                ? resolveTemplate(resource, node[ifKey], context, model)
+                : elseKey
+                ? resolveTemplate(resource, node[elseKey], context, model)
+                : null,
+        };
+    }
+}
+
+type Transformer = (node: any, context: any) => { node: any; context: any };
+
+function iterateObject(obj: any, context: any, transform: Transformer): any {
+    if (Array.isArray(obj)) {
+        return obj
+            .flatMap((value) => {
+                const { node: newNode, context: newContext } = transform(value, context);
+
+                return iterateObject(newNode, newContext, transform);
+            })
+            .filter((x) => x !== null);
+    } else if (isPlainObject(obj)) {
+        return Object.fromEntries(
+            Object.entries(obj).map(([key, value]) => {
+                const { node: newNode, context: newContext } = transform(value, context);
+
+                return [key, iterateObject(newNode, newContext, transform)];
+            }),
+        );
+    }
+
+    return transform(obj, context).node;
+}
+
+function isPlainObject(obj: any) {
+    return Object.prototype.toString.call(obj) === '[object Object]';
+}
+
+function omitKey(obj: any, key: string) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { [key]: _, ...rest } = obj;
+
+    return rest;
 }
