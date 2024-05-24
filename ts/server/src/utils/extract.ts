@@ -25,7 +25,7 @@ export function embeddedFHIRPath(a: string): Embedded | undefined {
     };
 }
 
-export function resolveTemplate(qr: Resource, template: any, context?: any, model?: any): any {
+export function resolveTemplate(qr: Resource, template: any, context?: any, model?: Model): any {
     return resolveTemplateRecur(qr, { rootNode: template }, context, model)['rootNode'];
 }
 
@@ -33,7 +33,7 @@ function resolveTemplateRecur(
     resource: Resource,
     template: any,
     initialContext: object,
-    model: any,
+    model: Model,
 ): any {
     return iterateObject(template, initialContext, (node, context) => {
         if (isPlainObject(node)) {
