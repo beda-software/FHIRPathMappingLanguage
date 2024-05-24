@@ -207,15 +207,7 @@ function matchIfBlock(resource: Resource, node: any, context: any, model: any) {
         const matches = ifKey.match(ifRegExp);
         const expr = matches[1];
 
-        const answers = fhirpath.evaluate(resource, expr, context, model);
-        if (answers.length !== 1) {
-            throw new Error('If block must accept expression that returns single boolean value');
-        }
-
-        const answer = answers[0];
-        if (typeof answer !== 'boolean') {
-            throw new Error('If block must accept expression that returns single boolean value');
-        }
+        const answer = fhirpath.evaluate(resource, `iif(${expr}, true, false)`, context, model)[0];
 
         return {
             node: answer
