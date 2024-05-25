@@ -2,20 +2,8 @@ import * as fhirpath from 'fhirpath';
 
 type Resource = Record<string, any>;
 
-
-type UserInvocationTable = {
-    [name: string]: {
-      fn: (...args: any) => any,
-      arity: {
-        [numberOfParams: number]: Array<'Expr' | 'AnyAtRoot' | 'Identifier' | 'TypeSpecifier' | 'Any' | 'Integer' | 'Boolean' | 'Number' | 'String'>
-      },
-      nullable?: boolean,
-      internalStructures?: boolean
-    }
-  };
-
 interface FPOptions {
-    // userInvocationTable?: UserInvocationTable;
+    userInvocationTable?: UserInvocationTable;
 }
 
 interface Embedded {
@@ -62,7 +50,7 @@ function resolveTemplateRecur(
     model?: Model,
     fpOptions?: FPOptions,
 ): any {
-    return iterateObject(template, initialContext?? {}, (node, context) => {
+    return iterateObject(template, initialContext ?? {}, (node, context) => {
         if (isPlainObject(node)) {
             const { node: newNode, context: newContext } = processAssignBlock(
                 resource,
@@ -94,7 +82,7 @@ function resolveTemplateRecur(
                     fhirpath.evaluate(
                         resource,
                         embedded.expression,
-                        context,
+                        { ...context }, // fhirpath mutates context!
                         model,
                         fpOptions,
                     )[0] ?? null;
@@ -175,7 +163,13 @@ function processForBlock(
         const itemKey = hasIndexKey ? matches[2] : matches[1];
         const expr = hasIndexKey ? matches[3] : matches[2];
 
-        const answers = fhirpath.evaluate(resource, expr, context, model, fpOptions);
+        const answers = fhirpath.evaluate(
+            resource,
+            expr,
+            { ...context }, // fhirpath mutates context!
+            model,
+            fpOptions,
+        );
         return {
             node: answers.map((answer, index) =>
                 resolveTemplate(
@@ -212,7 +206,13 @@ function processContextBlock(
         const matches = contextKey.match(contextRegExp);
 
         const expr = matches[1];
-        const answers = fhirpath.evaluate(resource, expr, context, model, fpOptions);
+        const answers = fhirpath.evaluate(
+            resource,
+            expr,
+            { ...context }, // fhirpath mutates context!
+            model,
+            fpOptions,
+        );
         const result: any[] = answers.map((answer) =>
             resolveTemplate(answer, node[contextKey], context, model, fpOptions),
         );
@@ -280,7 +280,7 @@ function processIfBlock(
         const answer = fhirpath.evaluate(
             resource,
             `iif(${expr}, true, false)`,
-            context,
+            { ...context }, // fhirpath mutates context!
             model,
             fpOptions,
         )[0];
