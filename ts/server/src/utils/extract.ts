@@ -1,5 +1,22 @@
-import { Resource } from 'fhir/r4b';
 import * as fhirpath from 'fhirpath';
+
+type Resource = Record<string, any>;
+
+
+type UserInvocationTable = {
+    [name: string]: {
+      fn: (...args: any) => any,
+      arity: {
+        [numberOfParams: number]: Array<'Expr' | 'AnyAtRoot' | 'Identifier' | 'TypeSpecifier' | 'Any' | 'Integer' | 'Boolean' | 'Number' | 'String'>
+      },
+      nullable?: boolean,
+      internalStructures?: boolean
+    }
+  };
+
+interface FPOptions {
+    // userInvocationTable?: UserInvocationTable;
+}
 
 interface Embedded {
     before: string;
@@ -7,7 +24,7 @@ interface Embedded {
     expression: string;
 }
 
-// TODO rewrite using regex and multiple embedding
+// TODO rewrite using regex and multiple embedding (#8)
 export function embeddedFHIRPath(a: string): Embedded | undefined {
     const start = a.search('{{');
     const stop = a.search('}}');
@@ -25,27 +42,43 @@ export function embeddedFHIRPath(a: string): Embedded | undefined {
     };
 }
 
-export function resolveTemplate(qr: Resource, template: any, context?: any, model?: Model): any {
-    return resolveTemplateRecur(qr, { rootNode: template }, context, model)['rootNode'];
+export function resolveTemplate(
+    resource: Resource,
+    template: any,
+    context?: Context,
+    model?: Model,
+    fpOptions?: FPOptions,
+): any {
+    // We pass template under rootNode because template might be not object, e.g. array or primitive
+    return resolveTemplateRecur(resource, { rootNode: template }, context, model, fpOptions)[
+        'rootNode'
+    ];
 }
 
 function resolveTemplateRecur(
     resource: Resource,
     template: any,
-    initialContext: object,
-    model: Model,
+    initialContext?: Context,
+    model?: Model,
+    fpOptions?: FPOptions,
 ): any {
-    return iterateObject(template, initialContext, (node, context) => {
+    return iterateObject(template, initialContext?? {}, (node, context) => {
         if (isPlainObject(node)) {
             const { node: newNode, context: newContext } = processAssignBlock(
                 resource,
                 node,
                 context,
                 model,
+                fpOptions,
             );
-            const matchers = [matchForBlock, matchContextBlock, matchIfBlock, matchMergeBlock];
+            const matchers = [
+                processForBlock,
+                processContextBlock,
+                processIfBlock,
+                processMergeBlock,
+            ];
             for (const matcher of matchers) {
-                const result = matcher(resource, newNode, newContext, model);
+                const result = matcher(resource, newNode, newContext, model, fpOptions);
 
                 if (result) {
                     return { node: result.node, context: newContext };
@@ -58,7 +91,13 @@ function resolveTemplateRecur(
 
             if (embedded) {
                 const result =
-                    fhirpath.evaluate(resource, embedded.expression, context, model)[0] ?? null;
+                    fhirpath.evaluate(
+                        resource,
+                        embedded.expression,
+                        context,
+                        model,
+                        fpOptions,
+                    )[0] ?? null;
                 if (embedded.before || embedded.after) {
                     return {
                         node: `${embedded.before}${result}${embedded.after}`,
@@ -77,7 +116,13 @@ function resolveTemplateRecur(
     });
 }
 
-function processAssignBlock(resource: Resource, node: any, context: any, model: any) {
+function processAssignBlock(
+    resource: Resource,
+    node: any,
+    context: Context,
+    model: Model,
+    fpOptions: FPOptions,
+): { node: any; context: Context } {
     const extendedContext = { ...context };
     const keys = Object.keys(node);
 
@@ -86,15 +131,15 @@ function processAssignBlock(resource: Resource, node: any, context: any, model: 
     if (assignKey) {
         if (Array.isArray(node[assignKey])) {
             node[assignKey].forEach((obj) => {
-                Object.entries(resolveTemplate(resource, obj, extendedContext, model)).forEach(
-                    ([key, value]) => {
-                        extendedContext[key] = value;
-                    },
-                );
+                Object.entries(
+                    resolveTemplate(resource, obj, extendedContext, model, fpOptions),
+                ).forEach(([key, value]) => {
+                    extendedContext[key] = value;
+                });
             });
         } else if (isPlainObject(node[assignKey])) {
             Object.entries(
-                resolveTemplate(resource, node[assignKey], extendedContext, model),
+                resolveTemplate(resource, node[assignKey], extendedContext, model, fpOptions),
             ).forEach(([key, value]) => {
                 extendedContext[key] = value;
             });
@@ -108,7 +153,13 @@ function processAssignBlock(resource: Resource, node: any, context: any, model: 
     return { node, context };
 }
 
-function matchForBlock(resource: Resource, node: any, context: any, model: any) {
+function processForBlock(
+    resource: Resource,
+    node: any,
+    context: Context,
+    model: Model,
+    fpOptions: FPOptions,
+): { node: any } | undefined {
     const keys = Object.keys(node);
 
     const forRegExp = /{%\s*for\s+(?:(\w+?)\s*,\s*)?(\w+?)\s+in\s+(.+?)\s*%}/;
@@ -124,7 +175,7 @@ function matchForBlock(resource: Resource, node: any, context: any, model: any) 
         const itemKey = hasIndexKey ? matches[2] : matches[1];
         const expr = hasIndexKey ? matches[3] : matches[2];
 
-        const answers = fhirpath.evaluate(resource, expr, context, model);
+        const answers = fhirpath.evaluate(resource, expr, context, model, fpOptions);
         return {
             node: answers.map((answer, index) =>
                 resolveTemplate(
@@ -136,13 +187,20 @@ function matchForBlock(resource: Resource, node: any, context: any, model: any) 
                         ...(hasIndexKey ? { [indexKey]: index } : {}),
                     },
                     model,
+                    fpOptions,
                 ),
             ),
         };
     }
 }
 
-function matchContextBlock(resource: Resource, node: any, context: any, model: any) {
+function processContextBlock(
+    resource: Resource,
+    node: any,
+    context: Context,
+    model: Model,
+    fpOptions: FPOptions,
+): { node: any } | undefined {
     const keys = Object.keys(node);
 
     const contextRegExp = /{{\s*(.+?)\s*}}/;
@@ -154,42 +212,54 @@ function matchContextBlock(resource: Resource, node: any, context: any, model: a
         const matches = contextKey.match(contextRegExp);
 
         const expr = matches[1];
-        const answers = fhirpath.evaluate(resource, expr, context, model);
+        const answers = fhirpath.evaluate(resource, expr, context, model, fpOptions);
         const result: any[] = answers.map((answer) =>
-            resolveTemplate(answer, node[contextKey], context, model),
+            resolveTemplate(answer, node[contextKey], context, model, fpOptions),
         );
 
         return { node: result };
     }
 }
 
-function matchMergeBlock(resource: Resource, node: any, context: any, model: any) {
+function processMergeBlock(
+    resource: Resource,
+    node: any,
+    context: Context,
+    model: Model,
+    fpOptions: FPOptions,
+): { node: any } | undefined {
     const keys = Object.keys(node);
 
     const mergeRegExp = /{%\s*merge\s*%}/;
-    const mergehKey = keys.find((k) => k.match(mergeRegExp));
-    if (mergehKey) {
+    const mergeKey = keys.find((k) => k.match(mergeRegExp));
+    if (mergeKey) {
         if (keys.length > 1) {
             throw new Error('Merge block must be presented as single key');
         }
 
         return {
-            node: (Array.isArray(node[mergehKey]) ? node[mergehKey] : [node[mergehKey]]).reduce(
+            node: (Array.isArray(node[mergeKey]) ? node[mergeKey] : [node[mergeKey]]).reduce(
                 (mergeAcc, nodeValue) => {
-                    const result = resolveTemplate(resource, nodeValue, context, model);
+                    const result = resolveTemplate(resource, nodeValue, context, model, fpOptions);
                     if (!isPlainObject(result) && result !== null) {
                         throw new Error('Merge block must contain object');
                     }
 
                     return { ...mergeAcc, ...(result || {}) };
                 },
-                omitKey(node, mergehKey),
+                {},
             ),
         };
     }
 }
 
-function matchIfBlock(resource: Resource, node: any, context: any, model: any) {
+function processIfBlock(
+    resource: Resource,
+    node: any,
+    context: Context,
+    model: Model,
+    fpOptions: FPOptions,
+): { node: any } | undefined {
     const keys = Object.keys(node);
 
     const ifRegExp = /{%\s*if\s+(.+?)\s*%}/;
@@ -207,37 +277,42 @@ function matchIfBlock(resource: Resource, node: any, context: any, model: any) {
         const matches = ifKey.match(ifRegExp);
         const expr = matches[1];
 
-        const answer = fhirpath.evaluate(resource, `iif(${expr}, true, false)`, context, model)[0];
+        const answer = fhirpath.evaluate(
+            resource,
+            `iif(${expr}, true, false)`,
+            context,
+            model,
+            fpOptions,
+        )[0];
 
         return {
             node: answer
-                ? resolveTemplate(resource, node[ifKey], context, model)
+                ? resolveTemplate(resource, node[ifKey], context, model, fpOptions)
                 : elseKey
-                ? resolveTemplate(resource, node[elseKey], context, model)
+                ? resolveTemplate(resource, node[elseKey], context, model, fpOptions)
                 : null,
         };
     }
 }
 
-type Transformer = (node: any, context: any) => { node: any; context: any };
+type Transformer = (node: any, context: Context) => { node: any; context: Context };
 
-function iterateObject(obj: any, context: any, transform: Transformer): any {
+function iterateObject(obj: any, context: Context, transform: Transformer): any {
     if (Array.isArray(obj)) {
+        // Arrays are flattened and null values are removed here
         return obj
             .flatMap((value) => {
-                const { node: newNode, context: newContext } = transform(value, context);
+                const result = transform(value, context);
 
-                return iterateObject(newNode, newContext, transform);
+                return iterateObject(result.node, result.context, transform);
             })
             .filter((x) => x !== null);
     } else if (isPlainObject(obj)) {
-        return Object.fromEntries(
-            Object.entries(obj).map(([key, value]) => {
-                const { node: newNode, context: newContext } = transform(value, context);
+        return mapValues(obj, (value) => {
+            const result = transform(value, context);
 
-                return [key, iterateObject(newNode, newContext, transform)];
-            }),
-        );
+            return iterateObject(result.node, result.context, transform);
+        });
     }
 
     return transform(obj, context).node;
@@ -245,6 +320,14 @@ function iterateObject(obj: any, context: any, transform: Transformer): any {
 
 function isPlainObject(obj: any) {
     return Object.prototype.toString.call(obj) === '[object Object]';
+}
+
+function mapValues(obj: object, fn: (value: any, key: string) => any) {
+    return Object.fromEntries(
+        Object.entries(obj).map(([key, value]) => {
+            return [key, fn(value, key)];
+        }),
+    );
 }
 
 function omitKey(obj: any, key: string) {
