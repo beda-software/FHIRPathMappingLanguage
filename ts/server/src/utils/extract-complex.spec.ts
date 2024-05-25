@@ -28,7 +28,7 @@ const template = {
             {
                 observationEntries: [
                     {
-                        "{% if hasAnswers('WEIGHT') and hasAnswers('HEIGHT') %}": {
+                        "{% if answers('WEIGHT').exists() and answers('HEIGHT').exists() %}": {
                             '{% assign %}': [
                                 {
                                     observationId:
@@ -413,24 +413,16 @@ const sample = {
 };
 
 const userInvocationTable: UserInvocationTable = {
-    hasAnswers: {
-        fn: (inputs, linkId) =>
-            fhirpath.evaluate(
-                inputs,
-                `repeat(item).where(linkId='${linkId}').answer.value.exists()`,
-            )[0],
-        arity: { 0: [], 1: ['String'] },
-    },
     answers: {
-        fn: (inputs, linkId, type) => {
-            const getter = ['Reference', 'Coding', 'Quantity'].includes(type) ? 'children()' : type;
+        fn: (inputs, linkId: string, type?: string) => {
+            const getter = ['Reference', 'Coding', 'Quantity', undefined].includes(type) ? 'children()' : type;
 
             return fhirpath.evaluate(
                 inputs,
                 `repeat(item).where(linkId='${linkId}').answer.value.${getter}`,
             );
         },
-        arity: { 0: [], 2: ['String', 'String'] },
+        arity: { 0: [], 1: ['String'], 2: ['String', 'String'] },
     },
     // Get rid of toString once it's fixed https://github.com/HL7/fhirpath.js/issues/156
     toString: {
