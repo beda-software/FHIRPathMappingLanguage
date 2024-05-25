@@ -79,10 +79,10 @@ function resolveTemplateRecur(
 
             if (embedded) {
                 const result =
-                    fhirpath.evaluate(
+                    evaluateExpression(
                         resource,
                         embedded.expression,
-                        { ...context }, // fhirpath mutates context!
+                        context,
                         model,
                         fpOptions,
                     )[0] ?? null;
@@ -163,13 +163,7 @@ function processForBlock(
         const itemKey = hasIndexKey ? matches[2] : matches[1];
         const expr = hasIndexKey ? matches[3] : matches[2];
 
-        const answers = fhirpath.evaluate(
-            resource,
-            expr,
-            { ...context }, // fhirpath mutates context!
-            model,
-            fpOptions,
-        );
+        const answers = evaluateExpression(resource, expr, context, model, fpOptions);
         return {
             node: answers.map((answer, index) =>
                 resolveTemplate(
@@ -206,13 +200,7 @@ function processContextBlock(
         const matches = contextKey.match(contextRegExp);
 
         const expr = matches[1];
-        const answers = fhirpath.evaluate(
-            resource,
-            expr,
-            { ...context }, // fhirpath mutates context!
-            model,
-            fpOptions,
-        );
+        const answers = evaluateExpression(resource, expr, context, model, fpOptions);
         const result: any[] = answers.map((answer) =>
             resolveTemplate(answer, node[contextKey], context, model, fpOptions),
         );
@@ -277,10 +265,10 @@ function processIfBlock(
         const matches = ifKey.match(ifRegExp);
         const expr = matches[1];
 
-        const answer = fhirpath.evaluate(
+        const answer = evaluateExpression(
             resource,
             `iif(${expr}, true, false)`,
-            { ...context }, // fhirpath mutates context!
+            context,
             model,
             fpOptions,
         )[0];
@@ -335,4 +323,31 @@ function omitKey(obj: any, key: string) {
     const { [key]: _, ...rest } = obj;
 
     return rest;
+}
+
+export function evaluateExpression(
+    resource: any,
+    expression: string,
+    context: Context,
+    model: Model,
+    options: FPOptions,
+) {
+    try {
+        return fhirpath.evaluate(
+            resource,
+            expression,
+            // fhirpath mutates context https://github.com/HL7/fhirpath.js/issues/155
+            { ...context },
+            model,
+            options,
+        );
+    } catch (exc) {
+        throw new Error(
+            `Can not evaluate "${expression}": ${exc}\nContext:\n${JSON.stringify(
+                context,
+                null,
+                1,
+            )}\n\nResource:\n${JSON.stringify(resource, null, 1)}`,
+        );
+    }
 }
