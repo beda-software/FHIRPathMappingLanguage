@@ -200,7 +200,7 @@ describe('Context usage', () => {
 });
 
 describe('Transformation', () => {
-    const resource = { list: [1, 2, 3] } as any;
+    const resource = { list: [{ key: 1 }, { key: 2 }, { key: 3 }] } as any;
 
     test('for empty object return empty object', () => {
         expect(resolveTemplate(resource, {})).toStrictEqual({});
@@ -258,26 +258,39 @@ describe('Transformation', () => {
     });
 
     test('for non-empty array expression return first element', () => {
-        expect(resolveTemplate(resource, '{{ list }}')).toStrictEqual(1);
+        expect(resolveTemplate(resource, '{{ list }}')).toStrictEqual({ key: 1 });
     });
 
     test('for empty array expression returns null', () => {
         expect(resolveTemplate(resource, '{{ list.where($this = 0) }}')).toStrictEqual(null);
     });
 
-    test.skip('for template expression returns resolved template', () => {
+    test('for empty array droppable expression returns undefined', () => {
+        expect(resolveTemplate(resource, '{{- list.where($this = 0) -}}')).toStrictEqual(undefined);
+    });
+
+    test('for template expression returns resolved template', () => {
         expect(
-            resolveTemplate(resource, '/{{ list[1] }}/{{ list[2] }}/{{ list[3] }}'),
+            resolveTemplate(resource, '/{{ list[0].key }}/{{ list[1].key }}/{{ list[2].key }}'),
         ).toStrictEqual('/1/2/3');
     });
 
-    test('for empty array template expression returns resolved template', () => {
+    test('for empty array template expression returns null', () => {
         expect(
             resolveTemplate(
                 resource,
                 '/Patient/{{ list.where($this = 0) }}/_history/{{ list.last() }}',
             ),
-        ).toStrictEqual('/Patient/null/_history/3');
+        ).toStrictEqual(null);
+    });
+
+    test('for empty array droppable template expression returns undefined', () => {
+        expect(
+            resolveTemplate(
+                resource,
+                '/Patient/{{- list.where($this = 0) -}}/_history/{{ list.last() }}',
+            ),
+        ).toStrictEqual(undefined);
     });
 });
 

@@ -6,30 +6,6 @@ interface FPOptions {
     userInvocationTable?: UserInvocationTable;
 }
 
-interface Embedded {
-    before: string;
-    after: string;
-    expression: string;
-}
-
-// TODO rewrite using regex and multiple embedding (#8)
-export function embeddedFHIRPath(a: string): Embedded | undefined {
-    const start = a.search('{{');
-    const stop = a.search('}}');
-    if (start === -1 || stop === -1) {
-        return undefined;
-    }
-
-    const before = a.slice(0, start);
-    const after = a.slice(stop + 2);
-    const expression = a.slice(start + 2, stop);
-    return {
-        before,
-        expression,
-        after,
-    };
-}
-
 export function resolveTemplate(
     resource: Resource,
     template: any,
@@ -75,33 +51,48 @@ function resolveTemplateRecur(
 
             return { node: newNode, context: newContext };
         } else if (typeof node === 'string') {
-            const embedded = embeddedFHIRPath(node);
-
-            if (embedded) {
-                const result =
-                    evaluateExpression(
-                        resource,
-                        embedded.expression,
-                        context,
-                        model,
-                        fpOptions,
-                    )[0] ?? null;
-                if (embedded.before || embedded.after) {
-                    return {
-                        node: `${embedded.before}${result}${embedded.after}`,
-                        context,
-                    };
-                }
-
-                return {
-                    node: result,
-                    context,
-                };
-            }
+            return {
+                node: processTemplateString(resource, node, context, model, fpOptions),
+                context,
+            };
         }
 
         return { node, context };
     });
+}
+
+function processTemplateString(
+    resource: Resource,
+    node: string,
+    context: Context,
+    model: Model,
+    fpOptions: FPOptions,
+) {
+    const templateRegExp = /{{-?\s*(.+?)\s*-?}}/g;
+    let match: RegExpExecArray | { [Symbol.replace](string: string, replaceValue: string): string; }[];
+    let result: any = node;
+
+    while ((match = templateRegExp.exec(node)) !== null) {
+        const expr = match[1];
+        const replacement =
+            evaluateExpression(resource, expr, context, model, fpOptions)[0] ?? null;
+
+        if (replacement === null) {
+            if (match[0].startsWith('{{-')) {
+                return undefined;
+            }
+
+            return null;
+        }
+
+        if (match[0] === node) {
+            return replacement;
+        }
+
+        result = result.replace(match[0], replacement);
+    }
+
+    return result;
 }
 
 function processAssignBlock(
