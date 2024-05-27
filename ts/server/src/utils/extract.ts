@@ -65,7 +65,7 @@ function processTemplateString(
     model: Model,
     fpOptions: FPOptions,
 ) {
-    const templateRegExp = /{{-?\s*(.+?)\s*-?}}/g;
+    const templateRegExp = /{{-?\s*([\s\S]+?)\s*-?}}/g;
     let match:
         | RegExpExecArray
         | { [Symbol.replace](string: string, replaceValue: string): string }[];
