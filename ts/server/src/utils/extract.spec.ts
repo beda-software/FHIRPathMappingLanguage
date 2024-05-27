@@ -95,19 +95,16 @@ describe('Transformation', () => {
     });
 
     test('for multiline template works properly', () => {
-        expect(
-            resolveTemplate(
-                resource,
-                '{{\nlist.where(\n$this.key=1\n).key\n}}',
-            ),
-        ).toStrictEqual(1);
+        expect(resolveTemplate(resource, '{{\nlist.where(\n$this.key=1\n).key\n}}')).toStrictEqual(
+            1,
+        );
     });
 
     test('fails with incorrect fhirpath expression', () => {
         expect(() => resolveTemplate({} as any, "{{ item.where(linkId='a) }}")).toThrowError(
             FPMLValidationError,
         );
-    }); 
+    });
 });
 
 describe('Context block', () => {

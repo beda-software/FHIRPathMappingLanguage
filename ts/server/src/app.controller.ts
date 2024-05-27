@@ -1,7 +1,8 @@
 import { Controller, Post, Body, HttpCode } from '@nestjs/common';
 import { AppService } from './app.service';
 import { Resource } from 'fhir/r4b';
-
+import * as fhirpath_r4_model from 'fhirpath/fhir-context/r4';
+import * as fhirpath from 'fhirpath';
 class Template {
     context: Record<string, Resource> | Resource;
     template: object;
@@ -13,20 +14,70 @@ function containsQuestionnaireResponse(
     return Object.keys(context).includes('QuestionnaireResponse');
 }
 
-@Controller('parse-template')
+@Controller()
 export class AppController {
     constructor(private readonly appService: AppService) {}
 
-    @Post()
+    @Post(['parse-template', 'r4/parse-template'])
     @HttpCode(200)
-    resolveTemplate(@Body() body: Template): object {
+    resolveTemplateR4(@Body() body: Template): object {
         const { context, template } = body;
-        let result: object;
+
         if (containsQuestionnaireResponse(context)) {
-            result = this.appService.resolveTemplate(context.QuestionnaireResponse, template);
-        } else {
-            result = this.appService.resolveTemplate(context, template);
+            return this.appService.resolveTemplate(
+                context.QuestionnaireResponse,
+                template,
+                context,
+                fhirpath_r4_model,
+                {
+                    userInvocationTable: {
+                        answers: {
+                            fn: (inputs, linkId: string) => {
+                                return fhirpath.evaluate(
+                                    inputs,
+                                    `repeat(item).where(linkId='${linkId}').answer.value`,
+                                    null,
+                                    fhirpath_r4_model,
+                                );
+                            },
+                            arity: { 0: [], 1: ['String'] },
+                        },
+                    },
+                },
+            );
         }
-        return result;
+
+        return this.appService.resolveTemplate(context, template, context, fhirpath_r4_model);
+    }
+
+    @Post('aidbox/parse-template')
+    @HttpCode(200)
+    resolveTemplateAidbox(@Body() body: Template): object {
+        const { context, template } = body;
+
+        if (containsQuestionnaireResponse(context)) {
+            return this.appService.resolveTemplate(
+                context.QuestionnaireResponse,
+                template,
+                context,
+                null,
+                {
+                    userInvocationTable: {
+                        answers: {
+                            fn: (inputs, linkId: string) => {
+                                return fhirpath.evaluate(
+                                    inputs,
+                                    `repeat(item).where(linkId='${linkId}').answer.value.children()`,
+                                    null,
+                                );
+                            },
+                            arity: { 0: [], 1: ['String'] },
+                        },
+                    },
+                },
+            );
+        }
+
+        return this.appService.resolveTemplate(context, template, context);
     }
 }

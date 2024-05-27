@@ -420,17 +420,13 @@ const conditions = [
 
 const userInvocationTable: UserInvocationTable = {
     answers: {
-        fn: (inputs, linkId: string, type?: string) => {
-            const getter = ['Reference', 'Coding', 'Quantity', undefined].includes(type)
-                ? 'children()'
-                : type;
-
+        fn: (inputs, linkId: string) => {
             return fhirpath.evaluate(
                 inputs,
-                `repeat(item).where(linkId='${linkId}').answer.value.${getter}`,
+                `repeat(item).where(linkId='${linkId}').answer.value.children()`,
             );
         },
-        arity: { 0: [], 1: ['String'], 2: ['String', 'String'] },
+        arity: { 0: [], 1: ['String'] },
     },
     // Get rid of toString once it's fixed https://github.com/HL7/fhirpath.js/issues/156
     toString: {

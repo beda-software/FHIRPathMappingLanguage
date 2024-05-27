@@ -1,11 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { resolveTemplate } from './utils/extract';
-import { Resource } from 'fhir/r4b';
-import * as fhirpath_r4_model from 'fhirpath/fhir-context/r4';
+import { FPOptions, resolveTemplate } from './utils/extract';
+import * as fhirpath from 'fhirpath';
 
 @Injectable()
 export class AppService {
-    resolveTemplate(qr: Resource, template: object): object {
-        return resolveTemplate(qr, template, { root: qr }, fhirpath_r4_model);
+    resolveTemplate(
+        resource: Record<string, any>,
+        template: object,
+        context: Context,
+        model?: Model,
+        options?: FPOptions,
+    ): object {
+        return resolveTemplate(resource, template, { root: resource, ...context }, model, options);
     }
 }

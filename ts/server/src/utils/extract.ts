@@ -2,7 +2,7 @@ import * as fhirpath from 'fhirpath';
 
 type Resource = Record<string, any>;
 
-interface FPOptions {
+export interface FPOptions {
     userInvocationTable?: UserInvocationTable;
 }
 
