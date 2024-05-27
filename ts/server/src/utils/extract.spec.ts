@@ -1,203 +1,4 @@
-import { QuestionnaireResponse } from 'fhir/r4b';
-import { resolveTemplate } from './extract';
-import * as fhirpath_r4_model from 'fhirpath/fhir-context/r4';
-
-const qr: QuestionnaireResponse = {
-    resourceType: 'QuestionnaireResponse',
-    status: 'completed',
-    item: [
-        {
-            linkId: 'name',
-            item: [
-                {
-                    linkId: 'last-name',
-                    answer: [
-                        {
-                            valueString: 'Beda',
-                        },
-                    ],
-                },
-                {
-                    linkId: 'first-name',
-                    answer: [
-                        {
-                            valueString: 'Ilya',
-                        },
-                    ],
-                },
-                {
-                    linkId: 'middle-name',
-                    answer: [
-                        {
-                            valueString: 'Alekseevich',
-                        },
-                    ],
-                },
-            ],
-        },
-        {
-            linkId: 'birth-date',
-            answer: [
-                {
-                    valueDate: '2023-05-01',
-                },
-            ],
-        },
-        {
-            linkId: 'gender',
-            answer: [
-                {
-                    valueCoding: { code: 'male' },
-                },
-            ],
-        },
-        {
-            linkId: 'ssn',
-            answer: [
-                {
-                    valueString: '123',
-                },
-            ],
-        },
-        {
-            linkId: 'mobile',
-            answer: [
-                {
-                    valueString: '11231231231',
-                },
-            ],
-        },
-    ],
-};
-
-const template1 = {
-    resourceType: 'Patient',
-    name: [
-        {
-            family: "{{ QuestionnaireResponse.repeat(item).where(linkId='last-name').answer.value }}",
-            given: [
-                "{{ QuestionnaireResponse.repeat(item).where(linkId='first-name').answer.value }}",
-                "{{ QuestionnaireResponse.repeat(item).where(linkId='middle-name').answer.value }}",
-            ],
-        },
-    ],
-    birthDate: "{{ QuestionnaireResponse.item.where(linkId='birth-date').answer.value }}",
-    gender: "{{ QuestionnaireResponse.item.where(linkId='gender').answer.valueCoding.code }}",
-    telecom: [
-        {
-            system: 'phone',
-            value: "{{ QuestionnaireResponse.item.where(linkId='mobile').answer.value }}",
-        },
-    ],
-    identifier: [
-        {
-            system: 'http://hl7.org/fhir/sid/us-ssn',
-            value: "{{ QuestionnaireResponse.item.where(linkId='ssn').answer.value }}",
-        },
-    ],
-};
-
-const template2 = {
-    resourceType: 'Patient',
-    name: {
-        "{{ QuestionnaireResponse.item.where(linkId='name') }}": {
-            family: "{{ item.where(linkId='last-name').answer.valueString }}",
-            given: [
-                "{{ item.where(linkId='first-name').answer.valueString }}",
-                "{{ item.where(linkId='middle-name').answer.valueString }}",
-            ],
-        },
-    },
-    birthDate: "{{ QuestionnaireResponse.item.where(linkId='birth-date').answer.value }}",
-    gender: "{{ QuestionnaireResponse.item.where(linkId='gender').answer.valueCoding.code }}",
-    telecom: [
-        {
-            system: 'phone',
-            value: "{{ QuestionnaireResponse.item.where(linkId='mobile').answer.value }}",
-        },
-    ],
-    identifier: [
-        {
-            system: 'http://hl7.org/fhir/sid/us-ssn',
-            value: "{{ QuestionnaireResponse.item.where(linkId='ssn').answer.value }}",
-        },
-    ],
-};
-
-const result = {
-    birthDate: '2023-05-01',
-    gender: 'male',
-    identifier: [
-        {
-            system: 'http://hl7.org/fhir/sid/us-ssn',
-            value: '123',
-        },
-    ],
-    name: [
-        {
-            family: 'Beda',
-            given: ['Ilya', 'Alekseevich'],
-        },
-    ],
-    resourceType: 'Patient',
-    telecom: [
-        {
-            system: 'phone',
-            value: '11231231231',
-        },
-    ],
-};
-
-describe('Extraction', () => {
-    test('Simple transformation', () => {
-        expect(resolveTemplate(qr, template1, {}, fhirpath_r4_model)).toStrictEqual(result);
-    });
-
-    test('List transformation', () => {
-        expect(resolveTemplate(qr, template2, {}, fhirpath_r4_model)).toStrictEqual(result);
-    });
-
-    test('Partial strings', () => {
-        expect(
-            resolveTemplate(
-                {
-                    resourceType: 'Patient',
-                    id: 'foo',
-                },
-                { reference: 'Patient/{{Patient.id}}' },
-            ),
-        ).toStrictEqual({ reference: 'Patient/foo' });
-    });
-});
-
-describe('Context usage', () => {
-    const resource: any = {
-        foo: 'bar',
-        list: [{ key: 'a' }, { key: 'b' }, { key: 'c' }],
-    };
-    test('use context', () => {
-        expect(
-            resolveTemplate(
-                resource,
-                {
-                    list: {
-                        '{{ list }}': {
-                            key: '{{ key }}',
-                            foo: '{{ %root.foo }}',
-                        },
-                    },
-                },
-                { root: resource },
-            ),
-        ).toStrictEqual({
-            list: [
-                { key: 'a', foo: 'bar' },
-                { key: 'b', foo: 'bar' },
-                { key: 'c', foo: 'bar' },
-            ],
-        });
-    });
-});
+import { FPMLValidationError, resolveTemplate } from './extract';
 
 describe('Transformation', () => {
     const resource = { list: [{ key: 1 }, { key: 2 }, { key: 3 }] } as any;
@@ -292,43 +93,120 @@ describe('Transformation', () => {
             ),
         ).toStrictEqual(undefined);
     });
+
+    test('fails with incorrect fhirpath expression', () => {
+        expect(() => resolveTemplate({} as any, "{{ item.where(linkId='a) }}")).toThrowError(
+            FPMLValidationError,
+        );
+    });
 });
 
-describe('Assign usage', () => {
-    test('use assign', () => {
+describe('Context block', () => {
+    const resource: any = {
+        foo: 'bar',
+        list: [{ key: 'a' }, { key: 'b' }, { key: 'c' }],
+    };
+
+    test('passes result as resource', () => {
         expect(
             resolveTemplate(
+                resource,
                 {
-                    resourceType: 'Resource',
-                    sourceValue: 100,
-                } as any,
-                {
-                    '{% assign %}': [
-                        {
-                            varA: {
-                                '{% assign %}': [
-                                    {
-                                        varX: '{{ Resource.sourceValue.first() }}',
-                                    },
-                                ],
-
-                                x: '{{ %varX }}',
-                            },
+                    list: {
+                        '{{ list }}': {
+                            key: '{{ key }}',
+                            foo: '{{ %root.foo }}',
                         },
-                        { varB: '{{ %varA.x + 1 }}' },
-                        { varC: 0 },
-                    ],
-                    nested: {
-                        '{% assign %}': { varC: '{{ %varA.x + %varB }}' },
-                        valueA: '{{ %varA }}',
-                        valueB: '{{ %varB }}',
-                        valueC: '{{ %varC }}',
                     },
+                },
+                { root: resource },
+            ),
+        ).toStrictEqual({
+            list: [
+                { key: 'a', foo: 'bar' },
+                { key: 'b', foo: 'bar' },
+                { key: 'c', foo: 'bar' },
+            ],
+        });
+    });
+});
+
+describe('Assign block', () => {
+    const resource = {
+        resourceType: 'Resource',
+        sourceValue: 100,
+    } as any;
+
+    test('works with single var as object', () => {
+        expect(
+            resolveTemplate(resource, {
+                '{% assign %}': { var: 100 },
+                value: '{{ %var }}',
+            }),
+        ).toStrictEqual({
+            value: 100,
+        });
+    });
+
+    test('works with multiple vars as array of objects', () => {
+        expect(
+            resolveTemplate(resource, {
+                '{% assign %}': [{ varA: 100 }, { varB: '{{ %varA + 100}}' }],
+                valueA: '{{ %varA }}',
+                valueB: '{{ %varB }}',
+            }),
+        ).toStrictEqual({
+            valueA: 100,
+            valueB: 200,
+        });
+    });
+
+    test('has isolated nested context', () => {
+        expect(
+            resolveTemplate(resource, {
+                '{% assign %}': { varC: 100 },
+                nested: {
+                    '{% assign %}': { varC: 200 },
+                    valueC: '{{ %varC }}',
+                },
+                valueC: '{{ %varC }}',
+            }),
+        ).toStrictEqual({
+            valueC: 100,
+            nested: {
+                valueC: 200,
+            },
+        });
+    });
+
+    test('works properly in full example', () => {
+        expect(
+            resolveTemplate(resource, {
+                '{% assign %}': [
+                    {
+                        varA: {
+                            '{% assign %}': [
+                                {
+                                    varX: '{{ Resource.sourceValue.first() }}',
+                                },
+                            ],
+
+                            x: '{{ %varX }}',
+                        },
+                    },
+                    { varB: '{{ %varA.x + 1 }}' },
+                    { varC: 0 },
+                ],
+                nested: {
+                    '{% assign %}': { varC: '{{ %varA.x + %varB }}' },
                     valueA: '{{ %varA }}',
                     valueB: '{{ %varB }}',
                     valueC: '{{ %varC }}',
                 },
-            ),
+                valueA: '{{ %varA }}',
+                valueB: '{{ %varB }}',
+                valueC: '{{ %varC }}',
+            }),
         ).toStrictEqual({
             valueA: { x: 100 },
             valueB: 101,
@@ -340,6 +218,33 @@ describe('Assign usage', () => {
                 valueC: 201,
             },
         });
+    });
+
+    test('fails with multiple keys in object', () => {
+        expect(() =>
+            resolveTemplate(resource, {
+                '{% assign %}': { varA: 100, varB: 200 },
+                value: '{{ %var }}',
+            }),
+        ).toThrowError(FPMLValidationError);
+    });
+
+    test('fails with multiple keys in array of objects', () => {
+        expect(() =>
+            resolveTemplate(resource, {
+                '{% assign %}': [{ varA: 100, varB: 200 }],
+                value: '{{ %var }}',
+            }),
+        ).toThrowError(FPMLValidationError);
+    });
+
+    test('fails with non-array and non-object as value', () => {
+        expect(() =>
+            resolveTemplate(resource, {
+                '{% assign %}': 1,
+                value: '{{ %var }}',
+            }),
+        ).toThrowError(FPMLValidationError);
     });
 });
 
@@ -410,6 +315,15 @@ describe('For block', () => {
             listArr: [{ key: 'a' }, { key: 'b' }, { key: 'c' }],
         });
     });
+
+    test('fails with other keys passed', () => {
+        expect(() =>
+            resolveTemplate({ list: [1, 2, 3] } as any, {
+                userKey: 1,
+                '{% for key in %list %}': '{{ %key }}',
+            }),
+        ).toThrowError(FPMLValidationError);
+    });
 });
 
 describe('If block', () => {
@@ -417,7 +331,7 @@ describe('If block', () => {
         key: 'value',
     };
 
-    test('works properly for truthy if branch at root level', () => {
+    test('returns if branch for truthy condition at root level', () => {
         expect(
             resolveTemplate(resource, {
                 "{% if key = 'value' %}": { nested: "{{ 'true' + key }}" },
@@ -428,7 +342,7 @@ describe('If block', () => {
         });
     });
 
-    test('works properly for truthy if branch', () => {
+    test('returns if branch for truthy condition', () => {
         expect(
             resolveTemplate(resource, {
                 result: {
@@ -441,7 +355,7 @@ describe('If block', () => {
         });
     });
 
-    test('works properly for truthy if branch without else', () => {
+    test('returns if branch for truthy condition without else branch', () => {
         expect(
             resolveTemplate(resource, {
                 result: {
@@ -453,7 +367,7 @@ describe('If block', () => {
         });
     });
 
-    test('works properly for falsy if branch', () => {
+    test('returns else branch for falsy condition', () => {
         expect(
             resolveTemplate(resource, {
                 result: {
@@ -466,7 +380,7 @@ describe('If block', () => {
         });
     });
 
-    test('works properly for falsy if branch without else', () => {
+    test('returns null for falsy condition without else branch', () => {
         expect(
             resolveTemplate(resource, {
                 result: {
@@ -478,7 +392,7 @@ describe('If block', () => {
         });
     });
 
-    test('works properly for nested if', () => {
+    test('returns if branch for nested if', () => {
         expect(
             resolveTemplate(resource, {
                 result: {
@@ -492,7 +406,7 @@ describe('If block', () => {
         });
     });
 
-    test('works properly for nested else', () => {
+    test('returns else branch for nested else', () => {
         expect(
             resolveTemplate(resource, {
                 result: {
@@ -507,53 +421,81 @@ describe('If block', () => {
             result: 'value',
         });
     });
-});
 
-describe('Merge block', () => {
-    const resource: any = {
-        key: 'value',
-    };
-
-    test('works properly with single merge block', () => {
+    test('implicitly merges with null returned', () => {
         expect(
             resolveTemplate(resource, {
-                '{% merge %}': { a: 1 },
+                result: {
+                    myKey: 1,
+                    "{% if key = 'value' %}": null,
+                },
             }),
         ).toStrictEqual({
-            a: 1,
+            result: {
+                myKey: 1,
+            },
         });
     });
 
-    test('works properly with multiple merge blocks', () => {
+    test('implicitly merges with object returned for truthy condition', () => {
         expect(
             resolveTemplate(resource, {
-                '{% merge %}': [{ a: 1 }, { b: 2 }],
+                result: {
+                    myKey: 1,
+                    "{% if key = 'value' %}": {
+                        anotherKey: 2,
+                    },
+                },
             }),
         ).toStrictEqual({
-            a: 1,
-            b: 2,
+            result: {
+                myKey: 1,
+                anotherKey: 2,
+            },
         });
     });
 
-    test('works properly with multiple merge blocks containing nulls', () => {
+    test('implicitly merges with object returned for falsy condition', () => {
         expect(
             resolveTemplate(resource, {
-                '{% merge %}': [{ a: 1 }, null, { b: 2 }],
+                result: {
+                    myKey: 1,
+                    "{% if key != 'value' %}": {
+                        anotherKey: 2,
+                    },
+                    '{% else %}': {
+                        anotherKey: 3,
+                    },
+                },
             }),
         ).toStrictEqual({
-            a: 1,
-            b: 2,
+            result: {
+                myKey: 1,
+                anotherKey: 3,
+            },
         });
     });
 
-    test('works properly with multiple merge blocks overriding', () => {
-        expect(
+    test('fails on implicitly merge with non-object returned from if branch', () => {
+        expect(() =>
             resolveTemplate(resource, {
-                '{% merge %}': [{ x: 1, y: 2 }, { y: 3 }],
+                result: {
+                    myKey: 1,
+                    "{% if key = 'value' %}": [],
+                },
             }),
-        ).toStrictEqual({
-            x: 1,
-            y: 3,
-        });
+        ).toThrow(FPMLValidationError);
+    });
+
+    test('fails on implicitly merge with non-object returned from else branch', () => {
+        expect(() =>
+            resolveTemplate(resource, {
+                result: {
+                    myKey: 1,
+                    "{% if key != 'value' %}": {},
+                    '{% else %}': [],
+                },
+            }),
+        ).toThrow(FPMLValidationError);
     });
 });

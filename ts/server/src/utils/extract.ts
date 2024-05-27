@@ -6,6 +6,8 @@ interface FPOptions {
     userInvocationTable?: UserInvocationTable;
 }
 
+export class FPMLValidationError extends Error {}
+
 export function resolveTemplate(
     resource: Resource,
     template: any,
@@ -35,12 +37,7 @@ function resolveTemplateRecur(
                 model,
                 fpOptions,
             );
-            const matchers = [
-                processForBlock,
-                processContextBlock,
-                processIfBlock,
-                processMergeBlock,
-            ];
+            const matchers = [processContextBlock, processForBlock, processIfBlock];
             for (const matcher of matchers) {
                 const result = matcher(resource, newNode, newContext, model, fpOptions);
 
@@ -69,7 +66,9 @@ function processTemplateString(
     fpOptions: FPOptions,
 ) {
     const templateRegExp = /{{-?\s*(.+?)\s*-?}}/g;
-    let match: RegExpExecArray | { [Symbol.replace](string: string, replaceValue: string): string; }[];
+    let match:
+        | RegExpExecArray
+        | { [Symbol.replace](string: string, replaceValue: string): string }[];
     let result: any = node;
 
     while ((match = templateRegExp.exec(node)) !== null) {
@@ -110,6 +109,12 @@ function processAssignBlock(
     if (assignKey) {
         if (Array.isArray(node[assignKey])) {
             node[assignKey].forEach((obj) => {
+                if (Object.keys(obj).length !== 1) {
+                    throw new FPMLValidationError(
+                        'Assign block must accept only one key per object',
+                    );
+                }
+
                 Object.entries(
                     resolveTemplate(resource, obj, extendedContext, model, fpOptions),
                 ).forEach(([key, value]) => {
@@ -117,13 +122,16 @@ function processAssignBlock(
                 });
             });
         } else if (isPlainObject(node[assignKey])) {
+            if (Object.keys(node[assignKey]).length !== 1) {
+                throw new FPMLValidationError('Assign block must accept only one key per object');
+            }
             Object.entries(
                 resolveTemplate(resource, node[assignKey], extendedContext, model, fpOptions),
             ).forEach(([key, value]) => {
                 extendedContext[key] = value;
             });
         } else {
-            throw new Error('Assign block must accept array or object');
+            throw new FPMLValidationError('Assign block must accept array or object');
         }
 
         return { node: omitKey(node, assignKey), context: extendedContext };
@@ -145,7 +153,7 @@ function processForBlock(
     const forKey = keys.find((k) => k.match(forRegExp));
     if (forKey) {
         if (keys.length > 1) {
-            throw new Error('For block must be presented as single key');
+            throw new FPMLValidationError('For block must be presented as single key');
         }
 
         const matches = forKey.match(forRegExp);
@@ -186,7 +194,7 @@ function processContextBlock(
     const contextKey = keys.find((k) => k.match(contextRegExp));
     if (contextKey) {
         if (keys.length > 1) {
-            throw new Error('Context block must be presented as single key');
+            throw new FPMLValidationError('Context block must be presented as single key');
         }
         const matches = contextKey.match(contextRegExp);
 
@@ -197,38 +205,6 @@ function processContextBlock(
         );
 
         return { node: result };
-    }
-}
-
-function processMergeBlock(
-    resource: Resource,
-    node: any,
-    context: Context,
-    model: Model,
-    fpOptions: FPOptions,
-): { node: any } | undefined {
-    const keys = Object.keys(node);
-
-    const mergeRegExp = /{%\s*merge\s*%}/;
-    const mergeKey = keys.find((k) => k.match(mergeRegExp));
-    if (mergeKey) {
-        if (keys.length > 1) {
-            throw new Error('Merge block must be presented as single key');
-        }
-
-        return {
-            node: (Array.isArray(node[mergeKey]) ? node[mergeKey] : [node[mergeKey]]).reduce(
-                (mergeAcc, nodeValue) => {
-                    const result = resolveTemplate(resource, nodeValue, context, model, fpOptions);
-                    if (!isPlainObject(result) && result !== null) {
-                        throw new Error('Merge block must contain object');
-                    }
-
-                    return { ...mergeAcc, ...(result || {}) };
-                },
-                {},
-            ),
-        };
     }
 }
 
@@ -248,11 +224,6 @@ function processIfBlock(
     if (ifKey) {
         const elseKey = keys.find((k) => k.match(elseRegExp));
 
-        const maxKeysCount = elseKey ? 2 : 1;
-        if (keys.length > maxKeysCount) {
-            throw new Error('If block must contain only if and optional else keys');
-        }
-
         const matches = ifKey.match(ifRegExp);
         const expr = matches[1];
 
@@ -264,13 +235,28 @@ function processIfBlock(
             fpOptions,
         )[0];
 
-        return {
-            node: answer
-                ? resolveTemplate(resource, node[ifKey], context, model, fpOptions)
-                : elseKey
-                ? resolveTemplate(resource, node[elseKey], context, model, fpOptions)
-                : null,
-        };
+        const newNode = answer
+            ? resolveTemplate(resource, node[ifKey], context, model, fpOptions)
+            : elseKey
+            ? resolveTemplate(resource, node[elseKey], context, model, fpOptions)
+            : null;
+
+        const isMergeBehavior = keys.length !== (elseKey ? 2 : 1);
+        if (isMergeBehavior) {
+            if (!isPlainObject(newNode) && newNode !== null) {
+                throw new FPMLValidationError(
+                    'If/else block must return object for implicit merge into existing node',
+                );
+            }
+
+            return {
+                node: {
+                    ...omitKey(omitKey(node, ifKey), elseKey),
+                    ...(newNode !== null ? newNode : {}),
+                },
+            };
+        }
+        return { node: newNode };
     }
 }
 
@@ -333,7 +319,7 @@ export function evaluateExpression(
             options,
         );
     } catch (exc) {
-        throw new Error(
+        throw new FPMLValidationError(
             `Can not evaluate "${expression}": ${exc}\nContext:\n${JSON.stringify(
                 context,
                 null,
