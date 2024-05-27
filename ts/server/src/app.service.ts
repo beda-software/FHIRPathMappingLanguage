@@ -10,7 +10,8 @@ export class AppService {
         context: Context,
         model?: Model,
         options?: FPOptions,
+        strict?: boolean
     ): object {
-        return resolveTemplate(resource, template, { root: resource, ...context }, model, options);
+        return resolveTemplate(resource, template, { root: resource, ...context }, model, options, strict);
     }
 }

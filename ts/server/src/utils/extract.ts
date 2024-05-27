@@ -14,9 +14,26 @@ export interface FPOptions {
 export class FPMLValidationError extends Error {
     constructor(message: string, path: Path) {
         const pathStr = path.filter((x) => x != rootNodeKey).join('.');
-        super(`${message} on path ${pathStr}`);
+        super(`${message}. Path '${pathStr}'`);
     }
 }
+
+const guardedResource = new Proxy(
+    {},
+    {
+        get: (obj, prop) => {
+            if (prop === '__path__' || prop === 'resourceType') {
+                return undefined;
+            }
+
+            throw new Error(
+                `Forbidden access to resource property ${String(
+                    prop,
+                )} in strict mode. Use context instead`,
+            );
+        },
+    },
+);
 
 export function resolveTemplate(
     resource: Resource,
@@ -24,8 +41,16 @@ export function resolveTemplate(
     context?: Context,
     model?: Model,
     fpOptions?: FPOptions,
+    strict?: boolean,
 ): any {
-    return resolveTemplateRecur([], resource, template, context, model, fpOptions);
+    return resolveTemplateRecur(
+        [],
+        strict ? guardedResource : resource,
+        template,
+        context,
+        model,
+        fpOptions,
+    );
 }
 
 function resolveTemplateRecur(
@@ -354,6 +379,6 @@ export function evaluateExpression(
             options,
         );
     } catch (exc) {
-        throw new FPMLValidationError(`Can not evaluate "${expression}": ${exc}`, path);
+        throw new FPMLValidationError(`Can not evaluate '${expression}': ${exc}`, path);
     }
 }
