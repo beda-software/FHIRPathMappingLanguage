@@ -476,7 +476,7 @@ describe('If block', () => {
         });
     });
 
-    test('fails on implicitly merge with non-object returned from if branch', () => {
+    test('fails on implicit merge with non-object returned from if branch', () => {
         expect(() =>
             resolveTemplate(resource, {
                 result: {
@@ -487,7 +487,7 @@ describe('If block', () => {
         ).toThrow(FPMLValidationError);
     });
 
-    test('fails on implicitly merge with non-object returned from else branch', () => {
+    test('fails on implicit merge with non-object returned from else branch', () => {
         expect(() =>
             resolveTemplate(resource, {
                 result: {
