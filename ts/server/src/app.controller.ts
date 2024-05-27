@@ -1,8 +1,9 @@
-import { Controller, Post, Body, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, UseFilters } from '@nestjs/common';
 import { AppService } from './app.service';
 import { Resource } from 'fhir/r4b';
 import * as fhirpath_r4_model from 'fhirpath/fhir-context/r4';
 import * as fhirpath from 'fhirpath';
+import { FPMLValidationErrorFilter } from './app.filters';
 class Template {
     context: Record<string, Resource> | Resource;
     template: object;
@@ -15,6 +16,7 @@ function containsQuestionnaireResponse(
 }
 
 @Controller()
+@UseFilters(FPMLValidationErrorFilter)
 export class AppController {
     constructor(private readonly appService: AppService) {}
 

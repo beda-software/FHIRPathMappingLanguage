@@ -44,8 +44,8 @@ body:
                 Quantity:
                   value:
                     "{% assign %}":
-                      - rawHeight: "{{ answers('HEIGHT', 'decimal') }}"
-                      - rawWeight: "{{ answers('WEIGHT', 'decimal') }}"
+                      - rawHeight: "{{ answers('HEIGHT') }}"
+                      - rawWeight: "{{ answers('WEIGHT') }}"
                     "{% if %rawHeight < 90 %}": "{{ %rawWeight / 2.205 }}"
                     "{% else %}": "{{ %rawWeight }}"
                   unit: kg
@@ -93,7 +93,7 @@ body:
                 Quantity:
                   value:
                     "{% assign %}":
-                      - rawHeight: "{{ answers('HEIGHT', 'decimal') }}"
+                      - rawHeight: "{{ answers('HEIGHT') }}"
                       # 90 inch ~ 230cm
                     "{% if %rawHeight < 90 %}": "{{ %rawHeight * 2.54 }}" # inches to cm
                     "{% else %}": "{{ %rawHeight }}" # cm
@@ -102,7 +102,7 @@ body:
                   code: kg
 
     - conditionEntries:
-        "{% for index, coding in answers('MEDCOND1', 'Coding') | answers('MEDCOND2', 'Coding') %}":
+        "{% for index, coding in answers('MEDCOND1') | answers('MEDCOND2') %}":
           "{% assign %}":
             - conditionId: >-
                 {{

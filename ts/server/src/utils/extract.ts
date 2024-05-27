@@ -1,12 +1,22 @@
 import * as fhirpath from 'fhirpath';
 
 type Resource = Record<string, any>;
+type Path = Array<string | number>;
+
+// TODO: looks a bit hacky to use extra node here
+// TODO: I believe it might be re-written without using it
+const rootNodeKey = '__rootNode__';
 
 export interface FPOptions {
     userInvocationTable?: UserInvocationTable;
 }
 
-export class FPMLValidationError extends Error {}
+export class FPMLValidationError extends Error {
+    constructor(message: string, path: Path) {
+        const pathStr = path.filter((x) => x != rootNodeKey).join('.');
+        super(`${message} on path ${pathStr}`);
+    }
+}
 
 export function resolveTemplate(
     resource: Resource,
@@ -15,50 +25,55 @@ export function resolveTemplate(
     model?: Model,
     fpOptions?: FPOptions,
 ): any {
-    // We pass template under rootNode because template might be not object, e.g. array or primitive
-    return resolveTemplateRecur(resource, { rootNode: template }, context, model, fpOptions)[
-        'rootNode'
-    ];
+    return resolveTemplateRecur([], resource, template, context, model, fpOptions);
 }
 
 function resolveTemplateRecur(
+    startPath: Path,
     resource: Resource,
     template: any,
     initialContext?: Context,
     model?: Model,
     fpOptions?: FPOptions,
 ): any {
-    return iterateObject(template, initialContext ?? {}, (node, context) => {
-        if (isPlainObject(node)) {
-            const { node: newNode, context: newContext } = processAssignBlock(
-                resource,
-                node,
-                context,
-                model,
-                fpOptions,
-            );
-            const matchers = [processContextBlock, processForBlock, processIfBlock];
-            for (const matcher of matchers) {
-                const result = matcher(resource, newNode, newContext, model, fpOptions);
+    return iterateObject(
+        startPath,
+        { [rootNodeKey]: template },
+        initialContext ?? {},
+        (path, node, context) => {
+            if (isPlainObject(node)) {
+                const { node: newNode, context: newContext } = processAssignBlock(
+                    path,
+                    resource,
+                    node,
+                    context,
+                    model,
+                    fpOptions,
+                );
+                const matchers = [processContextBlock, processForBlock, processIfBlock];
+                for (const matcher of matchers) {
+                    const result = matcher(path, resource, newNode, newContext, model, fpOptions);
 
-                if (result) {
-                    return { node: result.node, context: newContext };
+                    if (result) {
+                        return { node: result.node, context: newContext };
+                    }
                 }
+
+                return { node: newNode, context: newContext };
+            } else if (typeof node === 'string') {
+                return {
+                    node: processTemplateString(path, resource, node, context, model, fpOptions),
+                    context,
+                };
             }
 
-            return { node: newNode, context: newContext };
-        } else if (typeof node === 'string') {
-            return {
-                node: processTemplateString(resource, node, context, model, fpOptions),
-                context,
-            };
-        }
-
-        return { node, context };
-    });
+            return { node, context };
+        },
+    )[rootNodeKey];
 }
 
 function processTemplateString(
+    path: Path,
     resource: Resource,
     node: string,
     context: Context,
@@ -74,7 +89,7 @@ function processTemplateString(
     while ((match = templateRegExp.exec(node)) !== null) {
         const expr = match[1];
         const replacement =
-            evaluateExpression(resource, expr, context, model, fpOptions)[0] ?? null;
+            evaluateExpression(path, resource, expr, context, model, fpOptions)[0] ?? null;
 
         if (replacement === null) {
             if (match[0].startsWith('{{-')) {
@@ -95,6 +110,7 @@ function processTemplateString(
 }
 
 function processAssignBlock(
+    path: Path,
     resource: Resource,
     node: any,
     context: Context,
@@ -112,26 +128,37 @@ function processAssignBlock(
                 if (Object.keys(obj).length !== 1) {
                     throw new FPMLValidationError(
                         'Assign block must accept only one key per object',
+                        path,
                     );
                 }
 
                 Object.entries(
-                    resolveTemplate(resource, obj, extendedContext, model, fpOptions),
+                    resolveTemplateRecur(path, resource, obj, extendedContext, model, fpOptions),
                 ).forEach(([key, value]) => {
                     extendedContext[key] = value;
                 });
             });
         } else if (isPlainObject(node[assignKey])) {
             if (Object.keys(node[assignKey]).length !== 1) {
-                throw new FPMLValidationError('Assign block must accept only one key per object');
+                throw new FPMLValidationError(
+                    'Assign block must accept only one key per object',
+                    path,
+                );
             }
             Object.entries(
-                resolveTemplate(resource, node[assignKey], extendedContext, model, fpOptions),
+                resolveTemplateRecur(
+                    path,
+                    resource,
+                    node[assignKey],
+                    extendedContext,
+                    model,
+                    fpOptions,
+                ),
             ).forEach(([key, value]) => {
                 extendedContext[key] = value;
             });
         } else {
-            throw new FPMLValidationError('Assign block must accept array or object');
+            throw new FPMLValidationError('Assign block must accept array or object', path);
         }
 
         return { node: omitKey(node, assignKey), context: extendedContext };
@@ -141,6 +168,7 @@ function processAssignBlock(
 }
 
 function processForBlock(
+    path: Path,
     resource: Resource,
     node: any,
     context: Context,
@@ -152,20 +180,21 @@ function processForBlock(
     const forRegExp = /{%\s*for\s+(?:(\w+?)\s*,\s*)?(\w+?)\s+in\s+(.+?)\s*%}/;
     const forKey = keys.find((k) => k.match(forRegExp));
     if (forKey) {
-        if (keys.length > 1) {
-            throw new FPMLValidationError('For block must be presented as single key');
-        }
-
         const matches = forKey.match(forRegExp);
         const hasIndexKey = matches.length === 4;
         const indexKey = hasIndexKey ? matches[1] : null;
         const itemKey = hasIndexKey ? matches[2] : matches[1];
         const expr = hasIndexKey ? matches[3] : matches[2];
 
-        const answers = evaluateExpression(resource, expr, context, model, fpOptions);
+        if (keys.length > 1) {
+            throw new FPMLValidationError(`For block must be presented as single key`, path);
+        }
+
+        const answers = evaluateExpression(path, resource, expr, context, model, fpOptions);
         return {
             node: answers.map((answer, index) =>
-                resolveTemplate(
+                resolveTemplateRecur(
+                    path,
                     resource,
                     node[forKey],
                     {
@@ -182,6 +211,7 @@ function processForBlock(
 }
 
 function processContextBlock(
+    path: Path,
     resource: Resource,
     node: any,
     context: Context,
@@ -193,15 +223,16 @@ function processContextBlock(
     const contextRegExp = /{{\s*(.+?)\s*}}/;
     const contextKey = keys.find((k) => k.match(contextRegExp));
     if (contextKey) {
-        if (keys.length > 1) {
-            throw new FPMLValidationError('Context block must be presented as single key');
-        }
         const matches = contextKey.match(contextRegExp);
-
         const expr = matches[1];
-        const answers = evaluateExpression(resource, expr, context, model, fpOptions);
+
+        if (keys.length > 1) {
+            throw new FPMLValidationError('Context block must be presented as single key', path);
+        }
+
+        const answers = evaluateExpression(path, resource, expr, context, model, fpOptions);
         const result: any[] = answers.map((answer) =>
-            resolveTemplate(answer, node[contextKey], context, model, fpOptions),
+            resolveTemplateRecur(path, answer, node[contextKey], context, model, fpOptions),
         );
 
         return { node: result };
@@ -209,6 +240,7 @@ function processContextBlock(
 }
 
 function processIfBlock(
+    path: Path,
     resource: Resource,
     node: any,
     context: Context,
@@ -228,6 +260,7 @@ function processIfBlock(
         const expr = matches[1];
 
         const answer = evaluateExpression(
+            path,
             resource,
             `iif(${expr}, true, false)`,
             context,
@@ -236,9 +269,9 @@ function processIfBlock(
         )[0];
 
         const newNode = answer
-            ? resolveTemplate(resource, node[ifKey], context, model, fpOptions)
+            ? resolveTemplateRecur(path, resource, node[ifKey], context, model, fpOptions)
             : elseKey
-            ? resolveTemplate(resource, node[elseKey], context, model, fpOptions)
+            ? resolveTemplateRecur(path, resource, node[elseKey], context, model, fpOptions)
             : null;
 
         const isMergeBehavior = keys.length !== (elseKey ? 2 : 1);
@@ -246,6 +279,7 @@ function processIfBlock(
             if (!isPlainObject(newNode) && newNode !== null) {
                 throw new FPMLValidationError(
                     'If/else block must return object for implicit merge into existing node',
+                    path,
                 );
             }
 
@@ -260,27 +294,27 @@ function processIfBlock(
     }
 }
 
-type Transformer = (node: any, context: Context) => { node: any; context: Context };
+type Transformer = (path: Path, node: any, context: Context) => { node: any; context: Context };
 
-function iterateObject(obj: any, context: Context, transform: Transformer): any {
+function iterateObject(startPath: Path, obj: any, context: Context, transform: Transformer): any {
     if (Array.isArray(obj)) {
         // Arrays are flattened and null values are removed here
         return obj
-            .flatMap((value) => {
-                const result = transform(value, context);
+            .flatMap((value, index) => {
+                const result = transform([...startPath, index], value, context);
 
-                return iterateObject(result.node, result.context, transform);
+                return iterateObject([...startPath, index], result.node, result.context, transform);
             })
             .filter((x) => x !== null);
     } else if (isPlainObject(obj)) {
-        return mapValues(obj, (value) => {
-            const result = transform(value, context);
+        return mapValues(obj, (value, key) => {
+            const result = transform([...startPath, key], value, context);
 
-            return iterateObject(result.node, result.context, transform);
+            return iterateObject([...startPath, key], result.node, result.context, transform);
         });
     }
 
-    return transform(obj, context).node;
+    return transform(startPath, obj, context).node;
 }
 
 function isPlainObject(obj: any) {
@@ -303,6 +337,7 @@ function omitKey(obj: any, key: string) {
 }
 
 export function evaluateExpression(
+    path: Path,
     resource: any,
     expression: string,
     context: Context,
@@ -319,12 +354,6 @@ export function evaluateExpression(
             options,
         );
     } catch (exc) {
-        throw new FPMLValidationError(
-            `Can not evaluate "${expression}": ${exc}\nContext:\n${JSON.stringify(
-                context,
-                null,
-                1,
-            )}\n\nResource:\n${JSON.stringify(resource, null, 1)}`,
-        );
+        throw new FPMLValidationError(`Can not evaluate "${expression}": ${exc}`, path);
     }
 }
