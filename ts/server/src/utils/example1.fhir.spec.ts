@@ -97,7 +97,6 @@ const template1 = {
     ],
 };
 
-
 const template2 = {
     resourceType: 'Patient',
     name: {
@@ -149,13 +148,10 @@ const result = {
     ],
 };
 
-describe('Extraction', () => {
-    test('Simple transformation', () => {
-        expect(resolveTemplate(qr, template1, {}, fhirpath_r4_model)).toStrictEqual(result);
-    });
-
-    test('List transformation', () => {
-        expect(resolveTemplate(qr, template2, {}, fhirpath_r4_model)).toStrictEqual(result);
-    });
+test('Simple transformation', () => {
+    expect(resolveTemplate(qr, template1, {}, fhirpath_r4_model)).toStrictEqual(result);
 });
 
+test('List transformation', () => {
+    expect(resolveTemplate(qr, template2, {}, fhirpath_r4_model)).toStrictEqual(result);
+});
