@@ -24,7 +24,7 @@
         "@nestjs/core": "^10.0.0",
         "@nestjs/platform-express": "^10.0.0",
         "@types/fhir": "^0.0.37",
-        "fhirpath": "^3.6.1",
+        "fhirpath": "^3.13.2",
         "reflect-metadata": "^0.1.13",
         "rxjs": "^7.8.1"
     },

@@ -1,0 +1,171 @@
+body:
+  "{% assign %}":
+    - patientId: "{{ %Patient.id }}"
+    - recordedDate: "{{ %QuestionnaireResponse.authored }}"
+    - observationEntries:
+        - "{% if answers('WEIGHT').exists() and answers('HEIGHT').exists() %}":
+            "{% assign %}":
+              - observationId: >-
+                  {{
+                    %Observation.where(
+                      id in %Provenance.target.id and
+                      category.coding.code='vital-signs' and 
+                      resourceType='Observation' and
+                      code.coding.code='29463-7'
+                    ).id 
+                  }}
+            fullUrl: "urn:uuid:observation-weight"
+            request:
+              "{% if %observationId.exists() %}":
+                url: "/Observation/{{ %observationId }}"
+                method: PUT
+              "{% else %}":
+                url: "/Observation?patient={{ %patientId }}&category=vital-signs&code=http://loinc.org|29463-7"
+                method: POST
+            resource:
+              resourceType: Observation
+              id: "{{ %observationId }}"
+              subject:
+                resourceType: Patient
+                id: "{{ %patientId }}"
+              status: final
+              effective:
+                dateTime: "{{ %recordedDate }}"
+              category:
+                - coding:
+                    - system: http://terminology.hl7.org/CodeSystem/observation-category
+                      code: vital-signs
+              code:
+                coding:
+                  - system: "http://loinc.org"
+                    code: 29463-7
+                    display: Body Weight
+              value:
+                Quantity:
+                  value:
+                    "{% assign %}":
+                      - rawHeight: "{{ answers('HEIGHT') }}"
+                      - rawWeight: "{{ answers('WEIGHT') }}"
+                    "{% if %rawHeight < 90 %}": "{{ %rawWeight / 2.205 }}"
+                    "{% else %}": "{{ %rawWeight }}"
+                  unit: kg
+                  system: "http://unitsofmeasure.org"
+                  code: kg
+
+        - "{% if answers('HEIGHT').exists() %}":
+            "{% assign %}":
+              - observationId: >-
+                  {{
+                    %Observation.where(
+                      id in %Provenance.target.id and
+                      category.coding.code='vital-signs' and 
+                      resourceType='Observation' and
+                      code.coding.code='29463-7'
+                    ).id 
+                  }}
+            fullUrl: "urn:uuid:observation-height"
+            request:
+              "{% if %observationId.exists() %}":
+                url: "/Observation/{{ %observationId }}"
+                method: PUT
+              "{% else %}":
+                url: "/Observation?patient={{ %patientId }}&category=vital-signs&code=http://loinc.org|8302-2"
+                method: POST
+            resource:
+              resourceType: Observation
+              id: "{{ %observationId }}"
+              subject:
+                resourceType: Patient
+                id: "{{ %patientId }}"
+              status: final
+              effective:
+                dateTime: "{{ %recordedDate }}"
+              category:
+                - coding:
+                    - system: http://terminology.hl7.org/CodeSystem/observation-category
+                      code: vital-signs
+              code:
+                coding:
+                  - system: "http://loinc.org"
+                    code: 8302-2
+                    display: Body Height
+              value:
+                Quantity:
+                  value:
+                    "{% assign %}":
+                      - rawHeight: "{{ answers('HEIGHT') }}"
+                      # 90 inch ~ 230cm
+                    "{% if %rawHeight < 90 %}": "{{ %rawHeight * 2.54 }}" # inches to cm
+                    "{% else %}": "{{ %rawHeight }}" # cm
+                  unit: kg
+                  system: "http://unitsofmeasure.org"
+                  code: kg
+
+    - conditionEntries:
+        "{% for index, coding in answers('MEDCOND1') | answers('MEDCOND2') %}":
+          "{% assign %}":
+            - conditionId: >-
+                {{
+                  %Condition.where(resourceType='Condition').where(
+                    id in %Provenance.target.id and
+                    category.coding.code='medicalHistory'
+                    and code.coding.system=%coding.system and
+                    code.coding.code=%coding.code
+                  ).id 
+                }}
+          fullUrl: "urn:uuid:condition-medical-history-{{ %index }}"
+          request:
+            "{% if %conditionId.exists() %}":
+              url: "Condition/{{ %conditionId }}"
+              method: PUT
+            "{% else %}":
+              url: /Condition?category=medicalHistory&code={{ %coding.system }}|{{ %coding.code }}&patient={{ %patientId }}
+              method: POST
+          resource:
+            resourceType: Condition
+            id: "{{ %conditionId }}"
+            subject:
+              resourceType: Patient
+              id: "{{ %patientId }}"
+            recordedDate: "{{ %recordedDate }}"
+            code:
+              coding:
+                - "{{ %coding }}"
+              text: "{{ %coding.display }}"
+            category:
+              - coding:
+                  - code: medicalHistory
+                    display: Medical history
+    - provenanceEntries:
+        "{% for entry in %observationEntries | %conditionEntries %}":
+          request:
+            url: /Provenance
+            method: POST
+          resource:
+            resourceType: Provenance
+            target:
+              - uri: "{{ %entry.fullUrl }}"
+            recorded: "{{ %recordedDate }}"
+            agent:
+              - who:
+                  resourceType: Organization
+                  id: "{{ %Organization.id }}"
+            entity:
+              - role: source
+                what:
+                  resourceType: QuestionnaireResponse
+                  id: "{{ %QuestionnaireResponse.id }}"
+  resourceType: Bundle
+  type: transaction
+  entry:
+    - "{% for entry in %observationEntries | %conditionEntries | %provenanceEntries %}": "{{ %entry }}"
+    - "{% assign %}":
+        - resourceIdsToDelete:
+            "{% for id in %Provenance.target.id.exclude((%observationEntries | %conditionEntries).resource.id) %}": "{{ %id }}"
+      "{% for provenance in %Provenance.where(target.id in %resourceIdsToDelete) %}":
+        - request:
+            url: "/Provenance/{{ %provenance.id }}"
+            method: DELETE
+        - request:
+            url: "/{{ %provenance.target.resourceType }}/{{ %provenance.target.id }}"
+            method: DELETE

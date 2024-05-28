@@ -1,10 +1,12 @@
-import { Controller, Post, Body, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, UseFilters } from '@nestjs/common';
 import { AppService } from './app.service';
 import { Resource } from 'fhir/r4b';
-
+import * as fhirpath_r4_model from 'fhirpath/fhir-context/r4';
+import { FPMLValidationErrorFilter } from './app.filters';
 class Template {
     context: Record<string, Resource> | Resource;
     template: object;
+    strict?: boolean;
 }
 
 function containsQuestionnaireResponse(
@@ -13,20 +15,36 @@ function containsQuestionnaireResponse(
     return Object.keys(context).includes('QuestionnaireResponse');
 }
 
-@Controller('parse-template')
+@Controller()
+@UseFilters(FPMLValidationErrorFilter)
 export class AppController {
     constructor(private readonly appService: AppService) {}
 
-    @Post()
+    @Post(['parse-template', 'r4/parse-template'])
     @HttpCode(200)
-    resolveTemplate(@Body() body: Template): object {
-        const { context, template } = body;
-        let result: object;
-        if (containsQuestionnaireResponse(context)) {
-            result = this.appService.resolveTemplate(context.QuestionnaireResponse, template);
-        } else {
-            result = this.appService.resolveTemplate(context, template);
-        }
-        return result;
+    resolveTemplateR4(@Body() body: Template): object {
+        const { context, template, strict = false } = body;
+
+        return this.appService.resolveTemplate(
+            containsQuestionnaireResponse(context) ? context.QuestionnaireResponse : context,
+            template,
+            context,
+            fhirpath_r4_model,
+            strict,
+        );
+    }
+
+    @Post('aidbox/parse-template')
+    @HttpCode(200)
+    resolveTemplateAidbox(@Body() body: Template): object {
+        const { context, template, strict = false } = body;
+
+        return this.appService.resolveTemplate(
+            containsQuestionnaireResponse(context) ? context.QuestionnaireResponse : context,
+            template,
+            context,
+            null,
+            strict,
+        );
     }
 }
