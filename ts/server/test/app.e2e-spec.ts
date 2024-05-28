@@ -23,7 +23,7 @@ describe('AppController (e2e)', () => {
                     resourceType: 'Patient',
                     id: 'foo',
                 },
-                template: { id: '{{ Patient.id }}' },
+                template: { id: '{{ Patient.id }}', name: '{{ name }}' },
             })
             .expect(200)
             .expect({ id: 'foo' });
@@ -37,7 +37,7 @@ describe('AppController (e2e)', () => {
                     resourceType: 'Patient',
                     id: 'foo',
                 },
-                template: { id: '{{ Patient.id }}' },
+                template: { id: '{{ Patient.id }}', name: '{{ name }}' },
             })
             .expect(200)
             .expect({ id: 'foo' });
@@ -51,10 +51,10 @@ describe('AppController (e2e)', () => {
                     resourceType: 'Patient',
                     id: 'foo',
                 },
-                template: { id: '{{ Patient.id }}' },
+                template: { id: '{{ Patient.id }}', name: '{{ name }}' },
             })
             .expect(200)
-            .expect({ id: 'foo' });
+            .expect({ id: 'foo', name: null });
     });
 
     it('$extract r4', () => {

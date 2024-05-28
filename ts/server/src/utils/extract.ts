@@ -42,6 +42,8 @@ export function resolveTemplate(
     model?: Model,
     fpOptions?: FPOptions,
     strict?: boolean,
+    // TODO: it's fast hack for backward compatibility
+    dropNulls?: boolean,
 ): any {
     return resolveTemplateRecur(
         [],
@@ -50,6 +52,7 @@ export function resolveTemplate(
         context,
         model,
         fpOptions,
+        dropNulls,
     );
 }
 
@@ -60,6 +63,7 @@ function resolveTemplateRecur(
     initialContext?: Context,
     model?: Model,
     fpOptions?: FPOptions,
+    dropNulls?: boolean,
 ): any {
     return iterateObject(
         startPath,
@@ -74,6 +78,7 @@ function resolveTemplateRecur(
                     context,
                     model,
                     fpOptions,
+                    dropNulls,
                 );
                 const matchers = [
                     processContextBlock,
@@ -82,7 +87,15 @@ function resolveTemplateRecur(
                     processIfBlock,
                 ];
                 for (const matcher of matchers) {
-                    const result = matcher(path, resource, newNode, newContext, model, fpOptions);
+                    const result = matcher(
+                        path,
+                        resource,
+                        newNode,
+                        newContext,
+                        model,
+                        fpOptions,
+                        dropNulls,
+                    );
 
                     if (result) {
                         return { node: result.node, context: newContext };
@@ -92,7 +105,15 @@ function resolveTemplateRecur(
                 return { node: newNode, context: newContext };
             } else if (typeof node === 'string') {
                 return {
-                    node: processTemplateString(path, resource, node, context, model, fpOptions),
+                    node: processTemplateString(
+                        path,
+                        resource,
+                        node,
+                        context,
+                        model,
+                        fpOptions,
+                        dropNulls,
+                    ),
                     context,
                 };
             }
@@ -109,6 +130,7 @@ function processTemplateString(
     context: Context,
     model: Model,
     fpOptions: FPOptions,
+    dropNulls?: boolean,
 ) {
     const templateRegExp = /{{-?\s*([\s\S]+?)\s*-?}}/g;
     let match:
@@ -126,7 +148,7 @@ function processTemplateString(
                 return undefined;
             }
 
-            return null;
+            return dropNulls ? undefined : null;
         }
 
         if (match[0] === node) {
@@ -146,6 +168,7 @@ function processAssignBlock(
     context: Context,
     model: Model,
     fpOptions: FPOptions,
+    dropNulls?: boolean,
 ): { node: any; context: Context } {
     const extendedContext = { ...context };
     const keys = Object.keys(node);
@@ -163,7 +186,15 @@ function processAssignBlock(
                 }
 
                 Object.entries(
-                    resolveTemplateRecur(path, resource, obj, extendedContext, model, fpOptions),
+                    resolveTemplateRecur(
+                        path,
+                        resource,
+                        obj,
+                        extendedContext,
+                        model,
+                        fpOptions,
+                        dropNulls,
+                    ),
                 ).forEach(([key, value]) => {
                     extendedContext[key] = value;
                 });
@@ -183,6 +214,7 @@ function processAssignBlock(
                     extendedContext,
                     model,
                     fpOptions,
+                    dropNulls,
                 ),
             ).forEach(([key, value]) => {
                 extendedContext[key] = value;
@@ -204,6 +236,7 @@ function processMergeBlock(
     context: Context,
     model: Model,
     fpOptions: FPOptions,
+    dropNulls?: boolean,
 ): { node: any } | undefined {
     const keys = Object.keys(node);
 
@@ -221,6 +254,7 @@ function processMergeBlock(
                         context,
                         model,
                         fpOptions,
+                        dropNulls,
                     );
                     if (!isPlainObject(result) && result !== null) {
                         throw new FPMLValidationError('Merge block must contain object', path);
@@ -241,6 +275,7 @@ function processForBlock(
     context: Context,
     model: Model,
     fpOptions: FPOptions,
+    dropNulls?: boolean,
 ): { node: any } | undefined {
     const keys = Object.keys(node);
 
@@ -272,6 +307,7 @@ function processForBlock(
                     },
                     model,
                     fpOptions,
+                    dropNulls,
                 ),
             ),
         };
@@ -285,6 +321,7 @@ function processContextBlock(
     context: Context,
     model: Model,
     fpOptions: FPOptions,
+    dropNulls?: boolean,
 ): { node: any } | undefined {
     const keys = Object.keys(node);
 
@@ -300,7 +337,15 @@ function processContextBlock(
 
         const answers = evaluateExpression(path, resource, expr, context, model, fpOptions);
         const result: any[] = answers.map((answer) =>
-            resolveTemplateRecur(path, answer, node[contextKey], context, model, fpOptions),
+            resolveTemplateRecur(
+                path,
+                answer,
+                node[contextKey],
+                context,
+                model,
+                fpOptions,
+                dropNulls,
+            ),
         );
 
         return { node: result };
@@ -314,6 +359,7 @@ function processIfBlock(
     context: Context,
     model: Model,
     fpOptions: FPOptions,
+    dropNulls?: boolean,
 ): { node: any } | undefined {
     const keys = Object.keys(node);
 
@@ -353,9 +399,25 @@ function processIfBlock(
         )[0];
 
         const newNode = answer
-            ? resolveTemplateRecur(path, resource, node[ifKey], context, model, fpOptions)
+            ? resolveTemplateRecur(
+                  path,
+                  resource,
+                  node[ifKey],
+                  context,
+                  model,
+                  fpOptions,
+                  dropNulls,
+              )
             : elseKey
-            ? resolveTemplateRecur(path, resource, node[elseKey], context, model, fpOptions)
+            ? resolveTemplateRecur(
+                  path,
+                  resource,
+                  node[elseKey],
+                  context,
+                  model,
+                  fpOptions,
+                  dropNulls,
+              )
             : null;
 
         const isMergeBehavior = keys.length !== (elseKey ? 2 : 1);

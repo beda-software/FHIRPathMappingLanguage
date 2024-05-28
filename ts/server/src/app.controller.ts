@@ -31,6 +31,7 @@ export class AppController {
             context,
             fhirpath_r4_model,
             strict,
+            true,
         );
     }
 
@@ -45,6 +46,7 @@ export class AppController {
             context,
             null,
             strict,
+            false
         );
     }
 }
