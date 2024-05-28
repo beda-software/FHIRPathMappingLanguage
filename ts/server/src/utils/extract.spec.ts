@@ -510,4 +510,88 @@ describe('If block', () => {
             }),
         ).toThrow(FPMLValidationError);
     });
+
+    test('fails on multiple if blocks', () => {
+        expect(() =>
+            resolveTemplate(resource, {
+                result: {
+                    myKey: 1,
+                    "{% if key != 'value' %}": {},
+                    "{% if key = 'value' %}": {},
+                },
+            }),
+        ).toThrow(FPMLValidationError);
+    });
+
+    test('fails on multiple else blocks', () => {
+        expect(() =>
+            resolveTemplate(resource, {
+                result: {
+                    myKey: 1,
+                    "{% if key != 'value' %}": {},
+                    '{% else %}': {},
+                    '{% else  %}': {},
+                },
+            }),
+        ).toThrow(FPMLValidationError);
+    });
+
+    test('fails on else block without if block', () => {
+        expect(() =>
+            resolveTemplate(resource, {
+                result: {
+                    myKey: 1,
+                    '{% else %}': {},
+                },
+            }),
+        ).toThrow(FPMLValidationError);
+    });
+});
+
+describe('Merge block', () => {
+    const resource: any = {
+        key: 'value',
+    };
+
+    test('implicitly merges into the node', () => {
+        expect(
+            resolveTemplate(resource, {
+                b: 1,
+                '{% merge %}': { a: 1 },
+            }),
+        ).toStrictEqual({
+            b: 1,
+            a: 1,
+        });
+    });
+
+    test('merges multiple blocks within order', () => {
+        expect(
+            resolveTemplate(resource, {
+                '{% merge %}': [{ a: 1 }, { b: 2 }, { a: 3 }],
+            }),
+        ).toStrictEqual({
+            a: 3,
+            b: 2,
+        });
+    });
+
+    test('merges multiple blocks containing nulls', () => {
+        expect(
+            resolveTemplate(resource, {
+                '{% merge %}': [{ a: 1 }, null, { b: 2 }],
+            }),
+        ).toStrictEqual({
+            a: 1,
+            b: 2,
+        });
+    });
+
+    test('fails on merge with non-object', () => {
+        expect(() =>
+            resolveTemplate(resource, {
+                '{% merge %}': [1, 2],
+            }),
+        ).toThrow(FPMLValidationError);
+    });
 });

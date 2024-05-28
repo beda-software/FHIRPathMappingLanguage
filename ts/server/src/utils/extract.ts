@@ -75,7 +75,12 @@ function resolveTemplateRecur(
                     model,
                     fpOptions,
                 );
-                const matchers = [processContextBlock, processForBlock, processIfBlock];
+                const matchers = [
+                    processContextBlock,
+                    processMergeBlock,
+                    processForBlock,
+                    processIfBlock,
+                ];
                 for (const matcher of matchers) {
                     const result = matcher(path, resource, newNode, newContext, model, fpOptions);
 
@@ -192,6 +197,43 @@ function processAssignBlock(
     return { node, context };
 }
 
+function processMergeBlock(
+    path: Path,
+    resource: Resource,
+    node: any,
+    context: Context,
+    model: Model,
+    fpOptions: FPOptions,
+): { node: any } | undefined {
+    const keys = Object.keys(node);
+
+    const mergeRegExp = /{%\s*merge\s*%}/;
+    const mergeKey = keys.find((k) => k.match(mergeRegExp));
+
+    if (mergeKey) {
+        return {
+            node: (Array.isArray(node[mergeKey]) ? node[mergeKey] : [node[mergeKey]]).reduce(
+                (mergeAcc, nodeValue) => {
+                    const result = resolveTemplateRecur(
+                        path,
+                        resource,
+                        nodeValue,
+                        context,
+                        model,
+                        fpOptions,
+                    );
+                    if (!isPlainObject(result) && result !== null) {
+                        throw new FPMLValidationError('Merge block must contain object', path);
+                    }
+
+                    return { ...mergeAcc, ...(result || {}) };
+                },
+                omitKey(node, mergeKey),
+            ),
+        };
+    }
+}
+
 function processForBlock(
     path: Path,
     resource: Resource,
@@ -204,6 +246,7 @@ function processForBlock(
 
     const forRegExp = /{%\s*for\s+(?:(\w+?)\s*,\s*)?(\w+?)\s+in\s+(.+?)\s*%}/;
     const forKey = keys.find((k) => k.match(forRegExp));
+
     if (forKey) {
         const matches = forKey.match(forRegExp);
         const hasIndexKey = matches.length === 4;
@@ -276,11 +319,27 @@ function processIfBlock(
 
     const ifRegExp = /{%\s*if\s+(.+?)\s*%}/;
     const elseRegExp = /{%\s*else\s*%}/;
-    const ifKey = keys.find((k) => k.match(ifRegExp));
+
+    const ifKeys = keys.filter((k) => k.match(ifRegExp));
+    if (ifKeys.length > 1) {
+        throw new FPMLValidationError('If block must be presented once', path);
+    }
+    const ifKey = ifKeys[0];
+
+    const elseKeys = keys.filter((k) => k.match(elseRegExp));
+    if (elseKeys.length > 1) {
+        throw new FPMLValidationError('Else block must be presented once', path);
+    }
+    const elseKey = elseKeys[0];
+
+    if (elseKey && !ifKey) {
+        throw new FPMLValidationError(
+            'Else block must be presented only when if block is presented',
+            path,
+        );
+    }
 
     if (ifKey) {
-        const elseKey = keys.find((k) => k.match(elseRegExp));
-
         const matches = ifKey.match(ifRegExp);
         const expr = matches[1];
 
