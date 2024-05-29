@@ -21,7 +21,7 @@ const result = {
                 },
                 resource: {
                     resourceType: 'Observation',
-                    id: null,
+                    id: undefined,
                     subject: 'Patient/pid',
                     status: 'final',
                     effectiveDateTime: '2024-01-01',
@@ -56,7 +56,7 @@ const result = {
                 },
                 resource: {
                     resourceType: 'Observation',
-                    id: null,
+                    id: undefined,
                     subject: 'Patient/pid',
                     status: 'final',
                     effectiveDateTime: '2024-01-01',
@@ -110,7 +110,7 @@ const result = {
                 },
                 resource: {
                     resourceType: 'Condition',
-                    id: null,
+                    id: undefined,
                     subject: 'Patient/pid',
                     recordedDate: '2024-01-01',
                     code: {
@@ -132,7 +132,7 @@ const result = {
                 },
                 resource: {
                     resourceType: 'Condition',
-                    id: null,
+                    id: undefined,
                     subject: 'Patient/pid',
                     recordedDate: '2024-01-01',
                     code: {

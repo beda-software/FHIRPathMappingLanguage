@@ -26,12 +26,22 @@ describe('Transformation', () => {
         ).toStrictEqual([1, 2, 3, 4, 5, 6]);
     });
 
-    test('for array with nulls returns compacted array', () => {
+    test('for array with null values returns compacted array', () => {
         expect(resolveTemplate(resource, [[1, null, 2, null, 3]])).toStrictEqual([1, 2, 3]);
+    });
+
+    test('for array with undefined values returns compacted array', () => {
+        expect(resolveTemplate(resource, [[1, undefined, 2, undefined, 3]])).toStrictEqual([
+            1, 2, 3,
+        ]);
     });
 
     test('for object with null keys returns null keys', () => {
         expect(resolveTemplate(resource, { key: null })).toStrictEqual({ key: null });
+    });
+
+    test('for object with undefined keys returns undefined keys', () => {
+        expect(resolveTemplate(resource, { key: undefined })).toStrictEqual({ key: undefined });
     });
 
     test('for object with non-null keys returns non-null keys', () => {
@@ -68,12 +78,12 @@ describe('Transformation', () => {
         expect(resolveTemplate(resource, '{{ list }}')).toStrictEqual({ key: 1 });
     });
 
-    test('for empty array expression returns null', () => {
-        expect(resolveTemplate(resource, '{{ list.where($this = 0) }}')).toStrictEqual(null);
+    test('for empty array expression returns undefined', () => {
+        expect(resolveTemplate(resource, '{{ list.where($this = 0) }}')).toStrictEqual(undefined);
     });
 
-    test('for empty array droppable expression returns undefined', () => {
-        expect(resolveTemplate(resource, '{{- list.where($this = 0) -}}')).toStrictEqual(undefined);
+    test('for empty array nullable expression returns null', () => {
+        expect(resolveTemplate(resource, '{{+ list.where($this = 0) +}}')).toStrictEqual(null);
     });
 
     test('for template expression returns resolved template', () => {
@@ -82,22 +92,22 @@ describe('Transformation', () => {
         ).toStrictEqual('/1/2/3');
     });
 
-    test('for empty array template expression returns null', () => {
+    test('for empty array template expression returns undefined', () => {
         expect(
             resolveTemplate(
                 resource,
                 '/Patient/{{ list.where($this = 0) }}/_history/{{ list.last() }}',
             ),
-        ).toStrictEqual(null);
+        ).toStrictEqual(undefined);
     });
 
-    test('for empty array droppable template expression returns undefined', () => {
+    test('for empty array nullable template expression returns null', () => {
         expect(
             resolveTemplate(
                 resource,
-                '/Patient/{{- list.where($this = 0) -}}/_history/{{ list.last() }}',
+                '/Patient/{{+ list.where($this = 0) +}}/_history/{{ list.last() }}',
             ),
-        ).toStrictEqual(undefined);
+        ).toStrictEqual(null);
     });
 
     test('for multiline template works properly', () => {
@@ -392,11 +402,24 @@ describe('If block', () => {
         });
     });
 
-    test('returns null for falsy condition without else branch', () => {
+    test('returns undefined for falsy condition without else branch', () => {
         expect(
             resolveTemplate(resource, {
                 result: {
                     "{% if key != 'value' %}": { nested: "{{ 'true' + key }}" },
+                },
+            }),
+        ).toStrictEqual({
+            result: undefined,
+        });
+    });
+
+    test('returns null for falsy condition with nullable else branch', () => {
+        expect(
+            resolveTemplate(resource, {
+                result: {
+                    "{% if key != 'value' %}": { nested: "{{ 'true' + key }}" },
+                    '{% else %}': '{{+ {} +}}',
                 },
             }),
         ).toStrictEqual({
@@ -440,6 +463,21 @@ describe('If block', () => {
                 result: {
                     myKey: 1,
                     "{% if key = 'value' %}": null,
+                },
+            }),
+        ).toStrictEqual({
+            result: {
+                myKey: 1,
+            },
+        });
+    });
+
+    test('implicitly merges with undefined returned', () => {
+        expect(
+            resolveTemplate(resource, {
+                result: {
+                    myKey: 1,
+                    "{% if key = 'value' %}": undefined,
                 },
             }),
         ).toStrictEqual({
@@ -580,6 +618,17 @@ describe('Merge block', () => {
         expect(
             resolveTemplate(resource, {
                 '{% merge %}': [{ a: 1 }, null, { b: 2 }],
+            }),
+        ).toStrictEqual({
+            a: 1,
+            b: 2,
+        });
+    });
+
+    test('merges multiple blocks containing undefined', () => {
+        expect(
+            resolveTemplate(resource, {
+                '{% merge %}': [{ a: 1 }, undefined, { b: 2 }],
             }),
         ).toStrictEqual({
             a: 1,

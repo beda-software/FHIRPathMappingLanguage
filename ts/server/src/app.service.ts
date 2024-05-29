@@ -10,7 +10,6 @@ export class AppService {
         context: Context,
         model?: Model,
         strict?: boolean,
-        dropNulls?: boolean,
     ): object {
         const options: FPOptions = {
             userInvocationTable: {
@@ -43,7 +42,6 @@ export class AppService {
             model,
             options,
             strict,
-            dropNulls,
         );
     }
 }

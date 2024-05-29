@@ -54,7 +54,7 @@ describe('AppController (e2e)', () => {
                 template: { id: '{{ Patient.id }}', name: '{{ name }}' },
             })
             .expect(200)
-            .expect({ id: 'foo', name: null });
+            .expect({ id: 'foo' });
     });
 
     it('$extract r4', () => {
