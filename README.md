@@ -6,7 +6,7 @@ Data mapping is a high-demand topic. There are many products that try to address
 Even FHIR provides a specification called [FHIR Mapping Language](https://build.fhir.org/mapping-language.html) that should cover this gap.
 Unfortunately, there is a lack of open-source implementation of the FHIR Mapping Language.
 Furthermore, it is a complicated tool that is hard to create, debug, and manage in along term.
-Please check real-life [examples](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/examples) I have created. 
+Please check real-life [examples](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/examples).
 
 A mapping issue was encountered while implementing an extraction operation for [FHIR SDC](https://hl7.org/fhir/us/sdc/).   
 Instead of using the FHIR Mapping Language, an alternative was sought and found in [JUTE](https://github.com/healthSamurai/jute.clj). It is a powerful engine that provides a nice experience in creating mappers.
