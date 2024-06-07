@@ -1,23 +1,23 @@
 # FHIRPathMappingLanguage
 
 ## Motivation
+
 Data mapping is a high-demand topic. There are many products that try to address it.  
 Even FHIR provides a specification called [FHIR Mapping Language](https://build.fhir.org/mapping-language.html) that should cover this gap.
 Unfortunately, there is a lack of open-source implementation of the FHIR Mapping Language.
 Furthermore, it is a complicated tool that is hard to create, debug, and manage in along term.
 Please check real-life [examples](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/examples) I have created. 
 
-I faced a mapping issue while implementing an extraction operation for [FHIR SDC](https://hl7.org/fhir/us/sdc/).   
-I didn't want to use the FHIR Mapping Language, so I started searching for alternatives.
-I found [JUTE](https://github.com/healthSamurai/jute.clj). It is a powerful engine that provides a nice experience in creating mappers.
-From my point of view, the data DSL nature is a big advantage. You are creating an FHIR resource and just replacing some values with JUTE expression/directives.
+A mapping issue was encountered while implementing an extraction operation for [FHIR SDC](https://hl7.org/fhir/us/sdc/).   
+Instead of using the FHIR Mapping Language, an alternative was sought and found in [JUTE](https://github.com/healthSamurai/jute.clj). It is a powerful engine that provides a nice experience in creating mappers.
+JUTE is a powerful engine that offers a pleasant experience in creating mappers. Its data DSL nature is a significant advantage, allowing the creation of an FHIR resource with some values replaced by JUTE expressions/directives. 
 Please have a look at this [mapper](https://github.com/beda-software/FHIRPathMappingLanguage/blob/main/examples/repeatable/jute.yaml).
 It is pretty easy to understand what is going on here. Especially if you compare it with [FHIR Mapping language](https://github.com/beda-software/FHIRPathMappingLanguage/blob/main/examples/repeatable/fhirmapping.map) version.
-Unfortunately, JUTE provides its own syntax and approach for path expressions, while it is more convenient to use FHIRPath when you query data from FHIR Resources especially if you are querying QuestionnaireResponse. JUTE provides API to add any function inside the engine, so I embedded fhirpath function.
+Unfortunately, JUTE provides its own syntax and approach for path expressions, while it is more convenient to use FHIRPath when you query data from FHIR Resources especially if you are querying QuestionnaireResponse. JUTE provides API to add any function inside the engine, so the fhirpath function was embedded.
 As a result, you can see that almost all JUTE expression calls fhirpath function: [jute.yaml](https://github.com/beda-software/FHIRPathMappingLanguage/blob/main/examples/repeatable/jute.yaml)
-It looks like an overhead, so I decided to replace the JUTE path engine with FHIRPath and make it FHIRPath native.
-There is a similar approach in the FHIR world called [fhir-xquery](https://hl7.org/fhir/fhir-xquery.html). It is inspired by [liquid](https://shopify.github.io/liquid/) template language. [Fhir-xquery](https://hl7.org/fhir/fhir-xquery.html) uses to build dynamic query string. 
-Since this approach is already used in FHIR I decided to use it instead of `$` sign that is used in JUTE to identify an expression.
+This approach appears to be an overhead, prompting a decision to replace the JUTE path engine with FHIRPath to make it FHIRPath native.
+A similar approach in the FHIR world is called [fhir-xquery](https://hl7.org/fhir/fhir-xquery.html), inspired by the [liquid](https://shopify.github.io/liquid/) template language. [Fhir-xquery](https://hl7.org/fhir/fhir-xquery.html) uses to build dynamic query string. 
+This approach was adopted instead of the `$` sign used in JUTE to identify an expression.
 
 Finally, data DSL should be LLM-friendly and there should be an easy way to generate a mapper based on the text description.
 ChatGPT works pretty well with JSON and FHIRPath. So, you can just copy and paste the specification into ChatGPT and try to generate mappers.
@@ -25,11 +25,12 @@ ChatGPT works pretty well with JSON and FHIRPath. So, you can just copy and past
 
 ## Specification
 
-FHIRPath mapping language is data dsl designed to convert data from QuestionnaireResponse (and not only) to any FHIR Resource.
+The FHIRPath mapping language is a data DSL designed to convert data from QuestionnaireResponse (and not only) to any FHIR Resource.
 
-Here is how does it work.
+Here is how it works.
 
-Let's say we have a QuestionnaireResponse describing a patient:
+Suppose there is a QuestionnaireResponse describing a patient:
+
 ```json
 {
     "resourceType": "QuestionnaireResponse",
@@ -97,24 +98,27 @@ Let's say we have a QuestionnaireResponse describing a patient:
 }
 ```
 
-You need to map it to Patient FHIR resource. The mapper define structure of the resource.
-This mapper
+To map it to a Patient FHIR resource, define the structure of the resource.
+
+This mapper:
+
 ```json
 {
     "resourceType": "Patient"
 }
 ```
 
-is a valid mapper that return exactly the same structure
+is a valid mapper that returns exactly the same structure:
+
 ```json
 {
     "resourceType": "Patient"
 }
 ```
 
-All strings are treated as constant value unless it starts with `{{` and ends with `}}`.
-The text inside `{{` and `}}` is a FHIRPath expression.
-Let's use it to extract patient birthDate.
+All strings are treated as constant values unless they start with `{{` and end with `}}`. The text inside `{{` and `}}` is a FHIRPath expression. 
+
+To extract the patient's birthDate, use:
 
 ```json
 {
@@ -123,14 +127,17 @@ Let's use it to extract patient birthDate.
 }
 ```
 
-The result will be
+The result will be:
+
 ```json
 {
     "resourceType": "Patient",
     "birthDate": "2023-05-03"
 }
 ```
-Let's extract name, phone number and email fields:
+
+To extract the name, phone number, and email fields:
+
 ```json
 {
     "resourceType": "Patient",
@@ -155,13 +162,14 @@ Let's extract name, phone number and email fields:
 }
 ```
 
-To extract gender we need a bit more complex expression
+To extract gender, a more complex expression is needed:
 
 `QuestionnaireResponse.repeat(item).where(linkId='4.1').answer.value.code`
 
-because patient gender is token while question item type is Coding.
+because the patient's gender is a token while the question item type is Coding.
 
 The final mapper will look like this:
+
 ```json
 {
     "resourceType": "Patient",
@@ -189,9 +197,9 @@ The final mapper will look like this:
 
 ### Expression evaluation with empty result
 
-If expression is resolved to empty set `{}`, this key will be removed from the object.
+If an expression resolves to an empty set `{}`, the key will be removed from the object.
 
-Let's imagine, if the gender field is missing in the QuestionnaireResponse from the example above
+For example, if the gender field is missing in the QuestionnaireResponse from the example above:
 
 ```json
 {
@@ -200,7 +208,7 @@ Let's imagine, if the gender field is missing in the QuestionnaireResponse from 
 }
 ```
 
-this template will be mapped into
+this template will be mapped into:
 
 ```json
 {
@@ -210,9 +218,9 @@ this template will be mapped into
 
 ### Null preservable construction 
 
-**NOTE:** the feature is not mature enough and might be changed in the future.
+**Note:** This feature is not mature enough and might change in the future.
 
-There's a special construction that allows to preserve the null value in the final result using `{{+` and `+}}` instead of `{{` and `}}`,
+To preserve the null value in the final result, use `{{+` and `+}}` instead of `{{` and `}}`:
 
 ```json
 {
@@ -221,7 +229,7 @@ There's a special construction that allows to preserve the null value in the fin
 }
 ```
 
-the result will be 
+The result will be:
 
 ```json
 {
@@ -230,12 +238,13 @@ the result will be
 }
 ```
 
-**NOTE:** the feature is not mature enough and might be changed in the future.
-
+**Note:** This feature is not mature enough and might change in the future.
 
 ### Automatic array flattening and null removal
 
-In FHIR resources the array of arrays as well as array of nulls are invalid construction. To simplify writing mappers there's an automatic array flattening.
+In FHIR resources, arrays of arrays and arrays of nulls are invalid constructions. To simplify writing mappers, there is automatic array flattening.
+
+For example:
 
 ```json
 {
@@ -251,7 +260,7 @@ In FHIR resources the array of arrays as well as array of nulls are invalid cons
 }
 ```
 
-will be mapped into
+will be mapped into:
 
 ```json
 {
@@ -261,11 +270,11 @@ will be mapped into
 }
 ```
 
-It is especially useful if there's conditional and iteration logic used.
+This is especially useful if there is conditional and iteration logic used.
 
 ### Locally scoped variables
 
-Here's a special construction that allows to define custom variables for the FHIRPath context of underlying expressions.
+A special construction allows defining custom variables for the FHIRPath context of underlying expressions:
 
 ```json
 {
@@ -280,9 +289,7 @@ Here's a special construction that allows to define custom variables for the FHI
 }
 ```
 
-Pay attention that `%varA` is accessed using the percent sign. 
-It means that `%varA` is from the context. Also the order is in the array is important. The context variables can be accessed only in the underlying expressions including nested arrays/objects, e.g.
-
+Note that `%varA` is accessed using the percent sign. It means that `%varA` is from the context. The order in the array is important. The context variables can be accessed only in the underlying expressions, including nested arrays/objects. For example:
 
 ```json
 {
@@ -303,7 +310,7 @@ It means that `%varA` is from the context. Also the order is in the array is imp
 }
 ```
 
-will be transformed into
+will be transformed into:
 
 ```json
 {
@@ -321,10 +328,9 @@ will be transformed into
 
 ### Conditional logic
 
-FHIRPath provides conditional logic for primitive values like booleans, strings and numbers using `iif` function.
-Sometimes it's not enough and we need to map some values to complex structures, let's say JSON objects.
+FHIRPath provides conditional logic for primitive values like booleans, strings, and numbers using the `iif` function. However, there are scenarios where conditional logic needs to be applied to map values to complex structures, such as JSON objects.
 
-There's a special construction
+For these cases, a special construction is available in the FHIRPath mapping language:
 
 ```json
 {
@@ -339,7 +345,7 @@ There's a special construction
 
 where `expression` is FHIRPath expression that is evaluated in the same way as the first argument of `iif` function.
 
-For example,
+For example:
 
 ```json
 {
@@ -353,7 +359,7 @@ For example,
 }
 ```
 
-will be mapped into
+will be mapped into:
 
 ```json
 {
@@ -367,7 +373,7 @@ will be mapped into
 
 #### Implicit merge
 
-It also makes implicit merge, in case when `if`/`else` blocks return JSON objects, e.g.
+It also makes implicit merge, in case when `if`/`else` blocks return JSON objects, for example:
 
 ```json
 {
@@ -384,7 +390,7 @@ It also makes implicit merge, in case when `if`/`else` blocks return JSON object
 }
 ```
 
-The final result will be either 
+The final result will be either
 
 ```json
 {
@@ -408,11 +414,11 @@ or
 }
 ```
 
-In this example, Patient address contains original `{"type": "physical"}` object and `country`/`text` implicitly merged based on condition.
+In this example, Patient address contains original `{"type": "physical"}` object and `country`/`text` is implicitly merged based on condition.
 
 ### Iteration logic
 
-To iterate over the array of values here's a special construction
+To iterate over the array of values, here's a special construction:
 
 ```json
 {
@@ -422,9 +428,9 @@ To iterate over the array of values here's a special construction
 }
 ```
 
-that will be transformed into
+that will be transformed into:
 
-```
+```json
 [
     { "linkId": "1" },
     { "linkId": "2" },
@@ -446,9 +452,9 @@ that will be transformed into
 }
 ```
 
-that will be transformed into
+that will be transformed into:
 
-```
+```json
 [
     { "index": 0, "linkId": "1" },
     { "index": 1, "linkId": "2" },
@@ -462,7 +468,7 @@ that will be transformed into
 
 ### Merge logic
 
-To merge two or more objects, there's a special construction
+To merge two or more objects, there is a special construction:
 
 ```json
 {
@@ -477,7 +483,7 @@ To merge two or more objects, there's a special construction
 }
 ```
 
-that will be transformed into
+that will be transformed into:
 
 ```json
 {
