@@ -36,7 +36,7 @@ Let's say we have a QuestionnaireResponse describing a patient:
     "status": "completed",
     "item": [
         {
-            "Text name",
+            "text": "Name",
             "linkId": "1",
             "answer": [
                 {
@@ -54,7 +54,7 @@ Let's say we have a QuestionnaireResponse describing a patient:
             ]
         },
         {
-            "text": "gender"
+            "text": "gender",
             "linkId": "4.1",
             "answer": [
                 {
@@ -67,7 +67,7 @@ Let's say we have a QuestionnaireResponse describing a patient:
             ]
         },
         {
-            "text": "Phone"
+            "text": "Phone",
             "linkId": "phone",
             "answer": [
                 {
@@ -440,7 +440,7 @@ that will be transformed into
 ```json
 {
     "{% for index, item in QuestionnaireResponse.item %}": {
-        "index": "{{ %index }}"
+        "index": "{{ %index }}",
         "linkId": "{{ %item.linkId }}"
     }
 }
