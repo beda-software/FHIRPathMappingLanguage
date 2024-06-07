@@ -203,9 +203,9 @@ Let's imagine, if the gender field is missing in the QuestionnaireResponse from 
 this template will be mapped into
 
 ```json
-    {
-        "resourceType": "Patient"
-    }
+{
+    "resourceType": "Patient"
+}
 ```
 
 ### Null preservable construction 
