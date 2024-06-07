@@ -224,10 +224,10 @@ There's a special construction that allows to preserve the null value in the fin
 the result will be 
 
 ```json
-    {
-        "resourceType": "Patient",
-        "gender": null
-    }
+{
+    "resourceType": "Patient",
+    "gender": null
+}
 ```
 
 **NOTE:** the feature is not mature enough and might be changed in the future.
@@ -499,9 +499,9 @@ Also, it is packed into a [docker image](https://hub.docker.com/r/bedasoftware/f
 
 ### Usage
 
-```json
 POST /r4/parse-template
 
+```json
 {
     "context": {
         "QuestionnaireResponse": {
@@ -527,9 +527,9 @@ There's a runtime flag, called `strict` that is set to `false` by default. If it
 
 The previous example should be re-written as
 
-```json
 POST /r4/parse-template
 
+```json
 {
     "context": {
         "QuestionnaireResponse": {
