@@ -195,7 +195,7 @@ The final mapper will look like this:
 }
 ```
 
-### Expression evaluation with empty result
+### Null key removal
 
 If an expression resolves to an empty set `{}`, the key will be removed from the object.
 
@@ -216,7 +216,7 @@ this template will be mapped into:
 }
 ```
 
-### Null preservable construction 
+### Null key retention 
 
 **Note:** This feature is not mature enough and might change in the future.
 
@@ -272,9 +272,9 @@ will be mapped into:
 
 This is especially useful if there is conditional and iteration logic used.
 
-### Locally scoped variables
+### Scoped constant variables
 
-A special construction allows defining custom variables for the FHIRPath context of underlying expressions:
+A special construction allows defining custom constant variables for the FHIRPath context of underlying expressions:
 
 ```json
 {
