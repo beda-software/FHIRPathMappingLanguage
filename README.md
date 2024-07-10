@@ -272,6 +272,59 @@ will be mapped into:
 
 This is especially useful if there is conditional and iteration logic used.
 
+### String concatenation
+
+String concatenation might be implemented using fhirpath string concatenation using `+` sign, e.g.
+
+```json
+{
+    "url": "{{ 'Condition?patient=' + %patientId }}"
+}
+```
+
+or using liquid syntax
+
+```json
+{
+    "url": "Condition?patient={{ %patientId }}"
+}
+```
+
+#### Caveats
+
+Please note that string concatenation will be executed according to FHIRPath rules. If one of the variables resolves to an empty result, the entire expression will be empty result. 
+
+For empty `%patientId`:
+
+```json
+{
+    "url": "Condition?patient={{ %patientId }}"
+}
+```
+
+will be transformed into:
+
+```json
+{}
+```
+
+and using null key retention syntax:
+
+```json
+{
+    "url": "Condition?patient={{+ %patientId +}}"
+}
+```
+
+will be transformed into:
+
+```json
+{
+    "url": null
+}
+```
+
+
 ### Scoped constant variables
 
 A special construction allows defining custom constant variables for the FHIRPath context of underlying expressions:
