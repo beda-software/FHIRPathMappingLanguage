@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, UseFilters } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, UseFilters, Query } from '@nestjs/common';
 import { AppService } from './app.service';
 import { Resource } from 'fhir/r4b';
 import * as fhirpath_r4_model from 'fhirpath/fhir-context/r4';
@@ -6,6 +6,12 @@ import { FPMLValidationErrorFilter } from './app.filters';
 class Template {
     context: Record<string, Resource> | Resource;
     template: object;
+
+    // TODO: deprecated in favor of Options
+    strict?: boolean;
+}
+
+class Options {
     strict?: boolean;
 }
 
@@ -22,29 +28,29 @@ export class AppController {
 
     @Post(['parse-template', 'r4/parse-template'])
     @HttpCode(200)
-    resolveTemplateR4(@Body() body: Template): object {
-        const { context, template, strict = false } = body;
+    resolveTemplateR4(@Body() body: Template, @Query() query: Options): object {
+        const { context, template, strict } = body;
 
         return this.appService.resolveTemplate(
             containsQuestionnaireResponse(context) ? context.QuestionnaireResponse : context,
             template,
             context,
             fhirpath_r4_model,
-            strict,
+            query.strict ?? strict ?? false,
         );
     }
 
     @Post('aidbox/parse-template')
     @HttpCode(200)
-    resolveTemplateAidbox(@Body() body: Template): object {
-        const { context, template, strict = false } = body;
+    resolveTemplateAidbox(@Body() body: Template, @Query() query: Options): object {
+        const { context, template, strict  } = body;
 
         return this.appService.resolveTemplate(
             containsQuestionnaireResponse(context) ? context.QuestionnaireResponse : context,
             template,
             context,
             null,
-            strict,
+            query.strict ?? strict ?? false,
         );
     }
 }
