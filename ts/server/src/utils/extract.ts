@@ -12,9 +12,14 @@ export interface FPOptions {
 }
 
 export class FPMLValidationError extends Error {
+    errorPath: string;
+    errorMessage: string;
+
     constructor(message: string, path: Path) {
         const pathStr = path.filter((x) => x != rootNodeKey).join('.');
         super(`${message}. Path '${pathStr}'`);
+        this.errorMessage = message;
+        this.errorPath = pathStr;
     }
 }
 
