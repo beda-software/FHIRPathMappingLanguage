@@ -586,7 +586,7 @@ There's a runtime flag, called `strict` that is set to `false` by default. If it
 
 The previous example should be re-written as
 
-POST /r4/parse-template
+POST /r4/parse-template?strict=true
 
 ```json
 {
@@ -602,6 +602,5 @@ POST /r4/parse-template
         "authored": "{{ %QuestionnaireResponse.authored }}",
         "status": "completed"
     }
-    "strict": true
 }
 ```
