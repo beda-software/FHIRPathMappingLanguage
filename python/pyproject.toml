@@ -1,20 +1,16 @@
 [project]
 name = "fhirpath-mapping-language"
 description = "The FHIRPath mapping language is a data DSL designed to convert data from QuestionnaireResponse (and not only) to any FHIR Resource."
-authors = [
-    {name = "Beda Software",email = "ilya@beda.software"}
-]
+authors = [{ name = "Beda Software", email = "ilya@beda.software" }]
 maintainers = [
     { name = "Vadim Laletin", email = "vadim@beda.software" },
-    { name = "Ilya Beda", email = "ilya@beda.software" }
+    { name = "Ilya Beda", email = "ilya@beda.software" },
 ]
-readme = "README.md"
 license = { text = "BSD-3-Clause" }
 requires-python = ">=3.9"
 keywords = ["fhir", "fhirpath"]
 dynamic = ["version", "classifiers"]
-dependencies = [
-]
+dependencies = []
 
 [project.urls]
 homepage = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python/"
@@ -24,7 +20,7 @@ documentation = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/m
 
 [tool.poetry]
 version = "0.1.0"
-packages = [{include = "python", from = "src"}]
+packages = [{ include = "fhirpath-mapping-language", from = "src" }]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Web Environment",
@@ -38,8 +34,8 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
-
 ]
+readme = ["README.md", "../README.md"]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
