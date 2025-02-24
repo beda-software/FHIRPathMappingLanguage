@@ -19,8 +19,8 @@ dependencies = [
 [project.urls]
 homepage = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python/"
 repository = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python"
-documentation = "https://python-poetry.org/docs/"
-"Bug Tracker" = "https://github.com/python-poetry/poetry/issues"
+documentation = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python/README.md"
+"Bug Tracker" = "https://github.com/beda-software/FHIRPathMappingLanguage/issues"
 
 [tool.poetry]
 version = "0.1.0"
