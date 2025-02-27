@@ -1,5 +1,5 @@
 [project]
-name = "fhirpath-mapping-language"
+name = "fpml"
 description = "The FHIRPath mapping language is a data DSL designed to convert data from QuestionnaireResponse (and not only) to any FHIR Resource."
 authors = [{ name = "Beda Software", email = "ilya@beda.software" }]
 maintainers = [
@@ -20,7 +20,7 @@ documentation = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/m
 
 [tool.poetry]
 version = "0.1.0"
-packages = [{ include = "fhirpath-mapping-language", from = "src" }]
+packages = [{ include = "fpml" }]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Web Environment",
@@ -42,7 +42,7 @@ python = ">=3.9,<4.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.9.7"
-
+mypy = "^1.15.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.4"
@@ -52,4 +52,11 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
+files = ["fpml", "tests"]
+target-version = "py39"
 line-length = 100
+
+[tool.mypy]
+files = ["fpml", "tests"]
+ignore_missing_imports = true
+check_untyped_defs = true
