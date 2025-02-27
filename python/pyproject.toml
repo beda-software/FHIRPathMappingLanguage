@@ -52,9 +52,12 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-files = ["fpml", "tests"]
 target-version = "py39"
 line-length = 100
+
+[tool.ruff.lint]
+select = ["I", "E", "F", "N", "B", "C4", "PT", "UP", "I001", "A", "RET", "TID251", "RUF", "SIM", "PYI", "T20", "PIE", "G", "ISC", "PL"]
+
 
 [tool.mypy]
 files = ["fpml", "tests"]

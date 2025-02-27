@@ -1,6 +1,6 @@
-
-from .types import Path
 from .constants import root_node_key
+from .types import Path
+
 
 class FPMLValidationError(Exception):
     def __init__(self, message: str, path: Path) -> None:
@@ -9,4 +9,3 @@ class FPMLValidationError(Exception):
 
         self.error_message = message
         self.error_path = path_str
-

@@ -1,5 +1,4 @@
-from .core.extract import resolve_template
 from .core.exceptions import FPMLValidationError
+from .core.extract import resolve_template
 
-
-__all__ = ["resolve_template", "FPMLValidationError"]
+__all__ = ["FPMLValidationError", "resolve_template"]

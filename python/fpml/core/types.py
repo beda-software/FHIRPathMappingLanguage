@@ -1,6 +1,5 @@
 from typing import Any, Callable, Optional, TypedDict, Union
 
-
 Resource = dict[str, Any]
 Node = Any
 DictNode = dict[str, Any]
