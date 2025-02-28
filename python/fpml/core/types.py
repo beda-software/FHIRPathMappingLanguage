@@ -17,7 +17,7 @@ class Model(TypedDict):
 
 
 class FPOptions(TypedDict):
-    pass
+    model: Optional[Model]
 
 
 class MatcherResult(TypedDict):
@@ -30,7 +30,6 @@ Matcher = Callable[
         Resource,
         DictNode,
         Context,
-        Optional[Model],
         Optional[FPOptions],
     ],
     Optional[MatcherResult],
