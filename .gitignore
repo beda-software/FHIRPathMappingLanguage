@@ -6,4 +6,4 @@ htmlcov
 .vscode
 .history
 .coverage
-
+python/dist

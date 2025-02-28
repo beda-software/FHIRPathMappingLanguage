@@ -13,13 +13,13 @@ dynamic = ["version", "classifiers"]
 dependencies = ["fhirpathpy (>=1.2.1,<2.0.0)"]
 
 [project.urls]
-homepage = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python/"
+homepage = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python"
 repository = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python"
 documentation = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python/README.md"
 "Bug Tracker" = "https://github.com/beda-software/FHIRPathMappingLanguage/issues"
 
 [tool.poetry]
-version = "0.1.0"
+version = "0.0.1"
 packages = [{ include = "fpml" }]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -35,7 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-readme = ["README.md", "../README.md"]
+readme = ["README.md"]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
