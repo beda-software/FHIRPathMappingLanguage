@@ -5,3 +5,5 @@ coverage
 htmlcov
 .vscode
 .history
+.coverage
+

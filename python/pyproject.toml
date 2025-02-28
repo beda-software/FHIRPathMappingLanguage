@@ -46,10 +46,11 @@ mypy = "^1.15.0"
 autohooks-plugin-mypy = "^23.10.0"
 autohooks-plugin-ruff = "^25.2.0"
 autohooks = "^25.2.0"
-pyyaml = "^6.0.2"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.4"
+pytest-cov = "^6.0.0"
+pyyaml = "^6.0.2"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -70,3 +71,9 @@ check_untyped_defs = true
 [tool.autohooks]
 mode = "poetry"
 pre-commit = ["autohooks.plugins.mypy", "autohooks.plugins.ruff.format", "autohooks.plugins.ruff.check"]
+
+
+[tool.pytest.ini_options]
+addopts = "-ra --color=yes --cov fpml --cov-report html --doctest-modules"
+log_cli = true
+log_cli_level = "WARNING"
