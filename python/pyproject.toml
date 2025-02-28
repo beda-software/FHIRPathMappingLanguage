@@ -1,28 +1,79 @@
-[tool.black]
-line-length = 100
-target-version = ['py311']
-exclude = '''
-(
-  /(
-    | \.git
-    | \.pytest_cache
-    | htmlcov
-    | locales
-    | resources
-    | requirements
-    | embed
-  )/
-)
-'''
+[project]
+name = "fpml"
+description = "The FHIRPath mapping language is a data DSL designed to convert data from QuestionnaireResponse (and not only) to any FHIR Resource."
+authors = [{ name = "Beda Software", email = "ilya@beda.software" }]
+maintainers = [
+    { name = "Vadim Laletin", email = "vadim@beda.software" },
+    { name = "Ilya Beda", email = "ilya@beda.software" },
+]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["fhir", "fhirpath"]
+dynamic = ["version", "classifiers"]
+dependencies = ["fhirpathpy (>=1.2.1,<2.0.0)"]
 
-[tool.isort]
-multi_line_output = 3
-include_trailing_comma = true
-use_parentheses = true
-line_length = 100
-default_section = "THIRDPARTY"
-known_first_party = []
+[project.urls]
+homepage = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python"
+repository = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python"
+documentation = "https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python/README.md"
+"Bug Tracker" = "https://github.com/beda-software/FHIRPathMappingLanguage/issues"
+
+[tool.poetry]
+version = "0.0.1"
+packages = [{ include = "fpml" }]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+readme = ["README.md"]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<4.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.9.7"
+mypy = "^1.15.0"
+autohooks-plugin-mypy = "^23.10.0"
+autohooks-plugin-ruff = "^25.2.0"
+autohooks = "^25.2.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.3.4"
+pytest-cov = "^6.0.0"
+pyyaml = "^6.0.2"
+types-PyYAML = "^6.0.12"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["I", "E", "F", "N", "B", "C4", "PT", "UP", "I001", "A", "RET", "TID251", "RUF", "SIM", "PYI", "T20", "PIE", "G", "ISC", "PL"]
+
+[tool.mypy]
+files = ["fpml", "tests"]
+ignore_missing_imports = true
+check_untyped_defs = true
 
 [tool.autohooks]
-mode = "pythonpath"
-pre-commit = ["autohooks.plugins.black", "autohooks.plugins.isort"]
+mode = "poetry"
+pre-commit = ["autohooks.plugins.mypy", "autohooks.plugins.ruff.format", "autohooks.plugins.ruff.check"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --color=yes --cov fpml --cov-report html --doctest-modules"
+log_cli = true
+log_cli_level = "WARNING"

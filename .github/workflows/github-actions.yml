@@ -1,9 +1,14 @@
 name: github-actions
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - "*"
+    tags-ignore:
+      - "v*.*.*"
 env:
   BUILD_IMAGE: bedasoftware/fhirpath-extract:main
 jobs:
-  Build:
+  build-and-test-fpml-server-ts:
     runs-on: ubuntu-latest
     steps:
       - name: Copy repository
@@ -29,8 +34,8 @@ jobs:
         run: yarn test:e2e
         working-directory: ts/server
 
-  Publish:
-    needs: Build
+  publish-fpml-server-ts-to-dockerhub:
+    needs: build-and-test-fpml-server-ts
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -48,3 +53,6 @@ jobs:
           docker buildx build --platform linux/arm64,linux/amd64
           --push --tag ${{ env.BUILD_IMAGE }} .
         working-directory: ts/server
+
+  test-fpml-py:
+    uses: ./.github/workflows/test-python.yml

@@ -1,10 +1,10 @@
 {
-    "name": "server",
+    "name": "fpml-server",
     "version": "0.0.1",
-    "description": "",
-    "author": "",
+    "description": "The FHIRPath mapping language is a data DSL designed to convert data from QuestionnaireResponse (and not only) to any FHIR Resource.",
+    "author": "beda.software",
     "private": true,
-    "license": "UNLICENSED",
+    "license": "MIT",
     "scripts": {
         "build": "nest build",
         "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -66,6 +66,7 @@
             "**/*.(t|j)s"
         ],
         "coverageDirectory": "../coverage",
+        "coverageReporters": ["text", "html"],
         "testEnvironment": "node"
     }
 }

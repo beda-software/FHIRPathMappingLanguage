@@ -1,0 +1,213 @@
+body:
+  resourceType: Bundle
+  type: transaction
+  entry:
+    - fullUrl: 'urn:uuid:observation-weight'
+      request:
+        url: >-
+          /Observation?patient=pid&category=vital-signs&code=http://loinc.org|29463-7
+        method: POST
+      resource:
+        resourceType: Observation
+        subject:
+          resourceType: Patient
+          id: pid
+        status: final
+        effective:
+          dateTime: '2024-01-01'
+        category:
+          - coding:
+              - system: 'http://terminology.hl7.org/CodeSystem/observation-category'
+                code: vital-signs
+        code:
+          coding:
+            - system: 'http://loinc.org'
+              code: 29463-7
+              display: Body Weight
+        value:
+          Quantity:
+            value: 100
+            unit: kg
+            system: 'http://unitsofmeasure.org'
+            code: kg
+    - fullUrl: 'urn:uuid:observation-height'
+      request:
+        url: >-
+          /Observation?patient=pid&category=vital-signs&code=http://loinc.org|8302-2
+        method: POST
+      resource:
+        resourceType: Observation
+        subject:
+          resourceType: Patient
+          id: pid
+        status: final
+        effective:
+          dateTime: '2024-01-01'
+        category:
+          - coding:
+              - system: 'http://terminology.hl7.org/CodeSystem/observation-category'
+                code: vital-signs
+        code:
+          coding:
+            - system: 'http://loinc.org'
+              code: 8302-2
+              display: Body Height
+        value:
+          Quantity:
+            value: 190
+            unit: kg
+            system: 'http://unitsofmeasure.org'
+            code: kg
+    - fullUrl: 'urn:uuid:condition-medical-history-0'
+      request:
+        url: Condition/cond1
+        method: PUT
+      resource:
+        resourceType: Condition
+        id: cond1
+        subject:
+          resourceType: Patient
+          id: pid
+        recordedDate: '2024-01-01'
+        code:
+          coding:
+            - system: 'urn:raw'
+              code: hypertension
+              display: Hypertension
+          text: Hypertension
+        category:
+          - coding:
+              - code: medicalHistory
+                display: Medical history
+    - fullUrl: 'urn:uuid:condition-medical-history-1'
+      request:
+        url: >-
+          /Condition?category=medicalHistory&code=urn:raw|fatty-liver&patient=pid
+        method: POST
+      resource:
+        resourceType: Condition
+        subject:
+          resourceType: Patient
+          id: pid
+        recordedDate: '2024-01-01'
+        code:
+          coding:
+            - system: 'urn:raw'
+              code: fatty-liver
+              display: Fatty Liver
+          text: Fatty Liver
+        category:
+          - coding:
+              - code: medicalHistory
+                display: Medical history
+    - fullUrl: 'urn:uuid:condition-medical-history-2'
+      request:
+        url: '/Condition?category=medicalHistory&code=urn:raw|asthma&patient=pid'
+        method: POST
+      resource:
+        resourceType: Condition
+        subject:
+          resourceType: Patient
+          id: pid
+        recordedDate: '2024-01-01'
+        code:
+          coding:
+            - system: 'urn:raw'
+              code: asthma
+              display: Asthma
+          text: Asthma
+        category:
+          - coding:
+              - code: medicalHistory
+                display: Medical history
+    - request:
+        url: /Provenance
+        method: POST
+      resource:
+        resourceType: Provenance
+        target:
+          - uri: 'urn:uuid:observation-weight'
+        recorded: '2024-01-01'
+        agent:
+          - who:
+              resourceType: Organization
+              id: orgid
+        entity:
+          - role: source
+            what:
+              resourceType: QuestionnaireResponse
+              id: qrid
+    - request:
+        url: /Provenance
+        method: POST
+      resource:
+        resourceType: Provenance
+        target:
+          - uri: 'urn:uuid:observation-height'
+        recorded: '2024-01-01'
+        agent:
+          - who:
+              resourceType: Organization
+              id: orgid
+        entity:
+          - role: source
+            what:
+              resourceType: QuestionnaireResponse
+              id: qrid
+    - request:
+        url: /Provenance
+        method: POST
+      resource:
+        resourceType: Provenance
+        target:
+          - uri: 'urn:uuid:condition-medical-history-0'
+        recorded: '2024-01-01'
+        agent:
+          - who:
+              resourceType: Organization
+              id: orgid
+        entity:
+          - role: source
+            what:
+              resourceType: QuestionnaireResponse
+              id: qrid
+    - request:
+        url: /Provenance
+        method: POST
+      resource:
+        resourceType: Provenance
+        target:
+          - uri: 'urn:uuid:condition-medical-history-1'
+        recorded: '2024-01-01'
+        agent:
+          - who:
+              resourceType: Organization
+              id: orgid
+        entity:
+          - role: source
+            what:
+              resourceType: QuestionnaireResponse
+              id: qrid
+    - request:
+        url: /Provenance
+        method: POST
+      resource:
+        resourceType: Provenance
+        target:
+          - uri: 'urn:uuid:condition-medical-history-2'
+        recorded: '2024-01-01'
+        agent:
+          - who:
+              resourceType: Organization
+              id: orgid
+        entity:
+          - role: source
+            what:
+              resourceType: QuestionnaireResponse
+              id: qrid
+    - request:
+        url: /Provenance/prov-hypertension
+        method: DELETE
+    - request:
+        url: /Condition/cond-hypertension
+        method: DELETE

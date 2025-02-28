@@ -1,0 +1,107 @@
+QuestionnaireResponse:
+  resourceType: QuestionnaireResponse
+  id: qrid
+  authored: '2024-01-01'
+  item:
+    - linkid: root
+      item:
+        - linkId: WEIGHT
+          answer:
+            value:
+              decimal: 100
+        - linkId: HEIGHT
+          answer:
+            value:
+              decimal: 190
+        - linkId: MEDCOND1
+          answer:
+            - value:
+                Coding:
+                  system: 'urn:raw'
+                  code: hypertension
+                  display: Hypertension
+            - value:
+                Coding:
+                  system: 'urn:raw'
+                  code: fatty-liver
+                  display: Fatty Liver
+        - linkId: MEDCOND2
+          answer:
+            - value:
+                Coding:
+                  system: 'urn:raw'
+                  code: asthma
+                  display: Asthma
+
+Provenance:
+  - resourceType: Provenance
+    id: prov-hypertension
+    target:
+      - resourceType: Condition
+        id: cond-hypertension
+    recorded: '2024-01-01'
+    agent:
+      - who:
+          resourceType: Organization
+          id: orgid
+    entity:
+      - role: source
+        what: 
+          resourceType: QuestionnaireResponse
+          id: qrid
+  - resourceType: Provenance
+    id: prov-flu
+    target:
+      - resourceType: Condition
+        id: cond1
+    recorded: '2024-01-01'
+    agent:
+      - who:
+          resourceType: Organization
+          id: orgid
+    entity:
+      - role: source
+        what: 
+          resourceType: QuestionnaireResponse
+          id: qrid
+
+Observation: []
+Condition:
+  - resourceType: Condition
+    id: cond-flu
+    subject:
+      resourceType: Patient
+      id: pid
+    recordedDate: '2024-01-01'
+    code:
+      coding:
+        - system: 'urn:raw'
+          code: Flu
+          display: Flu
+      text: Flu
+    category:
+      - coding:
+          - code: medicalHistory
+            display: Medical history
+  - resourceType: Condition
+    id: cond1
+    subject:
+      resourceType: Patient
+      id: pid
+    recordedDate: '2024-01-01'
+    code:
+      coding:
+        - system: 'urn:raw'
+          code: hypertension
+          display: Hypertension
+      text: Hypertension
+    category:
+      - coding:
+          - code: medicalHistory
+            display: Medical history
+Organization:
+  resourceType: Organization
+  id: orgid
+Patient:
+  resourceType: Patient
+  id: pid

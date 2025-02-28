@@ -1,0 +1,3 @@
+dev.code-workspace
+.mypy_cache
+__pycache__
