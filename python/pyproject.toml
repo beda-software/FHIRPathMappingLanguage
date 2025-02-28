@@ -43,6 +43,9 @@ python = ">=3.9,<4.0"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.9.7"
 mypy = "^1.15.0"
+autohooks-plugin-mypy = "^23.10.0"
+autohooks-plugin-ruff = "^25.2.0"
+autohooks = "^25.2.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.4"
@@ -58,8 +61,11 @@ line-length = 100
 [tool.ruff.lint]
 select = ["I", "E", "F", "N", "B", "C4", "PT", "UP", "I001", "A", "RET", "TID251", "RUF", "SIM", "PYI", "T20", "PIE", "G", "ISC", "PL"]
 
-
 [tool.mypy]
 files = ["fpml", "tests"]
 ignore_missing_imports = true
 check_untyped_defs = true
+
+[tool.autohooks]
+mode = "poetry"
+pre-commit = ["autohooks.plugins.mypy", "autohooks.plugins.ruff.format", "autohooks.plugins.ruff.check"]
