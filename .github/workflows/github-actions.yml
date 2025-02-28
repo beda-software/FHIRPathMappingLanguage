@@ -73,9 +73,9 @@ jobs:
           pip install poetry
           poetry --project=./python install
       - name: Run lint
-        run: poetry --project=./python run ruff check
+        run: poetry --project=./python run ruff check ./python
       - name: Run typecheck
-        run: poetry --project=./python run mypy
+        run: poetry --project=./python run mypy ./python
       - name: Run tests
         run: poetry --project=./python run pytest --coverage
 

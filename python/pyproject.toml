@@ -51,6 +51,7 @@ autohooks = "^25.2.0"
 pytest = "^8.3.4"
 pytest-cov = "^6.0.0"
 pyyaml = "^6.0.2"
+types-PyYAML = "^6.0.12"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -71,7 +72,6 @@ check_untyped_defs = true
 [tool.autohooks]
 mode = "poetry"
 pre-commit = ["autohooks.plugins.mypy", "autohooks.plugins.ruff.format", "autohooks.plugins.ruff.check"]
-
 
 [tool.pytest.ini_options]
 addopts = "-ra --color=yes --cov fpml --cov-report html --doctest-modules"

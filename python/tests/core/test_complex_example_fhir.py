@@ -1,4 +1,4 @@
-from fhirpathpy.models import models
+from fhirpathpy.models import models  # type: ignore
 
 from fpml.core.extract import resolve_template
 

@@ -1,4 +1,4 @@
-from pydian import DROP, Mapper, get
+from pydian import get
 
 
 def map(qr):
