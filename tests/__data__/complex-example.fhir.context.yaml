@@ -1,0 +1,93 @@
+QuestionnaireResponse:
+  resourceType: QuestionnaireResponse
+  id: qrid
+  authored: '2024-01-01'
+  item:
+    - linkid: root
+      item:
+        - linkId: WEIGHT
+          answer:
+            valueDecimal: 100
+        - linkId: HEIGHT
+          answer:
+            valueDecimal: 190
+        - linkId: MEDCOND1
+          answer:
+            - valueCoding:
+                system: 'urn:raw'
+                code: hypertension
+                display: Hypertension
+            - valueCoding:
+                system: 'urn:raw'
+                code: fatty-liver
+                display: Fatty Liver
+        - linkId: MEDCOND2
+          answer:
+            - valueCoding:
+                system: 'urn:raw'
+                code: asthma
+                display: Asthma
+
+Provenance:
+  - resourceType: Provenance
+    id: prov-hypertension
+    target:
+      - reference: Condition/cond-hypertension
+    recorded: '2024-01-01'
+    agent:
+      - who: 
+          reference: Organization/orgid
+    entity:
+      - role: source
+        what:
+          reference: QuestionnaireResponse/qrid
+  - resourceType: Provenance
+    id: prov-flu
+    target:
+      - reference: Condition/cond1
+    recorded: '2024-01-01'
+    agent:
+      - who: Organization/orgid
+    entity:
+      - role: source
+        what: 
+          reference: QuestionnaireResponse/qrid
+Observation: []
+Condition:
+  - resourceType: Condition
+    id: cond-flu
+    subject:
+      reference: Patient/pid
+    recordedDate: '2024-01-01'
+    code:
+      coding:
+        - system: 'urn:raw'
+          code: Flu
+          display: Flu
+      text: Flu
+    category:
+      - coding:
+          - code: medicalHistory
+            display: Medical history
+  - resourceType: Condition
+    id: cond1
+    subject: 
+      reference: Patient/pid
+    recordedDate: '2024-01-01'
+    code:
+      coding:
+        - system: 'urn:raw'
+          code: hypertension
+          display: Hypertension
+      text: Hypertension
+    category:
+    
+      - coding:
+          - code: medicalHistory
+            display: Medical history
+Organization:
+  resourceType: Organization
+  id: orgid
+Patient:
+  resourceType: Patient
+  id: pid

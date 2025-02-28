@@ -2,13 +2,19 @@ body:
   "{% assign %}":
     - patientRef: "Patient/{{ %Patient.id }}"
     - recordedDate: "{{ %QuestionnaireResponse.authored }}"
+    - provenanceTargetIds:
+        "{% for id in %Provenance.target.select(reference.split('/').last()) %}": "{{ %id }}"
+    - weight: "{{ repeat(item).where(linkId='WEIGHT').answer.value }}"
+    - height: "{{ repeat(item).where(linkId='HEIGHT').answer.value }}"
+    - medConditions:
+        "{% for answer in repeat(item).where(linkId in 'MEDCOND1' | 'MEDCOND2').answer.value %}": "{{ %answer }}"
     - observationEntries:
-        - "{% if answers('WEIGHT').exists() and answers('HEIGHT').exists() %}":
+        - "{% if %weight and %height %}":
             "{% assign %}":
               - observationId: >-
                   {{
                     %Observation.where(
-                      id in %Provenance.target.id and 
+                      id in %provenanceTargetIds and 
                       category.coding.code='vital-signs' and 
                       resourceType='Observation' and
                       code.coding.code='29463-7'
@@ -25,7 +31,8 @@ body:
             resource:
               resourceType: Observation
               id: "{{ %observationId }}"
-              subject: "{{ %patientRef }}"
+              subject:
+                reference: "{{ %patientRef }}"
               status: final
               effectiveDateTime: "{{ %recordedDate }}"
               category:
@@ -39,21 +46,18 @@ body:
                     display: Body Weight
               valueQuantity:
                 value:
-                  "{% assign %}":
-                    - rawHeight: "{{ answers('HEIGHT') }}"
-                    - rawWeight: "{{ answers('WEIGHT') }}"
-                  "{% if %rawHeight < 90 %}": "{{ %rawWeight / 2.205 }}"
-                  "{% else %}": "{{ %rawWeight }}"
+                  "{% if %height < 90 %}": "{{ %weight / 2.205 }}"
+                  "{% else %}": "{{ %weight }}"
                 unit: kg
                 system: "http://unitsofmeasure.org"
                 code: kg
 
-        - "{% if answers('HEIGHT').exists() %}":
+        - "{% if %height.exists() %}":
             "{% assign %}":
               - observationId: >-
                   {{
                     %Observation.where(
-                      id in %Provenance.target.id and 
+                      id in %provenanceTargetIds and 
                       category.coding.code='vital-signs' and 
                       resourceType='Observation' and
                       code.coding.code='29463-7'
@@ -70,7 +74,8 @@ body:
             resource:
               resourceType: Observation
               id: "{{ %observationId }}"
-              subject: "{{ %patientRef }}"
+              subject:
+                reference: "{{ %patientRef }}"
               status: final
               effectiveDateTime: "{{ %recordedDate }}"
               category:
@@ -84,22 +89,20 @@ body:
                     display: Body Height
               valueQuantity:
                 value:
-                  "{% assign %}":
-                    - rawHeight: "{{ answers('HEIGHT') }}"
                     # 90 inch ~ 230cm
-                  "{% if %rawHeight < 90 %}": "{{ %rawHeight * 2.54 }}" # inches to cm
-                  "{% else %}": "{{ %rawHeight }}" # cm
+                  "{% if %height < 90 %}": "{{ %height * 2.54 }}" # inches to cm
+                  "{% else %}": "{{ %height }}" # cm
                 unit: kg
                 system: "http://unitsofmeasure.org"
                 code: kg
 
     - conditionEntries:
-        "{% for index, coding in answers('MEDCOND1') | answers('MEDCOND2') %}":
+        "{% for index, coding in %medConditions %}":
           "{% assign %}":
             - conditionId: >-
                 {{
                   %Condition.where(
-                    id in %Provenance.target.id and
+                    id in %provenanceTargetIds and
                     category.coding.code='medicalHistory'
                     and code.coding.system=%coding.system and
                     code.coding.code=%coding.code
@@ -116,7 +119,8 @@ body:
           resource:
             resourceType: Condition
             id: "{{ %conditionId }}"
-            subject: "{{ %patientRef }}"
+            subject:
+              reference: "{{ %patientRef }}"
             recordedDate: "{{ %recordedDate }}"
             code:
               coding:
@@ -137,21 +141,23 @@ body:
               - uri: "{{ %entry.fullUrl }}"
             recorded: "{{ %recordedDate }}"
             agent:
-              - who: "Organization/{{ %Organization.id }}"
+              - who:
+                  reference: "Organization/{{ %Organization.id }}"
             entity:
               - role: source
-                what: "QuestionnaireResponse/{{ %QuestionnaireResponse.id }}"
+                what:
+                  reference: "QuestionnaireResponse/{{ %QuestionnaireResponse.id }}"
   resourceType: Bundle
   type: transaction
   entry:
     - "{% for entry in %observationEntries | %conditionEntries | %provenanceEntries %}": "{{ %entry }}"
     - "{% assign %}":
         - resourceIdsToDelete:
-            "{% for id in %Provenance.target.id.exclude((%observationEntries | %conditionEntries).resource.id) %}": "{{ %id }}"
-      "{% for provenance in %Provenance.where(target.id in %resourceIdsToDelete) %}":
+            "{% for id in %provenanceTargetIds.exclude((%observationEntries | %conditionEntries).resource.id) %}": "{{ %id }}"
+      "{% for provenance in %Provenance.where(target.reference.split('/').last() in %resourceIdsToDelete) %}":
         - request:
             url: "/Provenance/{{ %provenance.id }}"
             method: DELETE
         - request:
-            url: "/{{ %provenance.target.resourceType }}/{{ %provenance.target.id }}"
+            url: "/{{ %provenance.target.reference }}"
             method: DELETE
