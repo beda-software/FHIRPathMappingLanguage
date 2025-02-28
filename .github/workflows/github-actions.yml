@@ -63,9 +63,21 @@ jobs:
       PYTHON: ${{ matrix.python-version }}
     steps:
       - uses: actions/checkout@v3
+      - name: Python ${{ matrix.python-version }} sample
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry --project=./python install
+      - name: Run lint
+        run: poetry --project=./python run ruff check
+      - name: Run typecheck
+        run: poetry --project=./python run mypy
       - name: Run tests
-        run: pytest --coverage
-        shell: bash
+        run: poetry --project=./python run pytest --coverage
 
   publish-fpml-py-to-pypi:
     needs: build-and-test-fpml-py
