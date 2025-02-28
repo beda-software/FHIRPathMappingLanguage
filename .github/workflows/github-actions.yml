@@ -77,7 +77,7 @@ jobs:
       - name: Run typecheck
         run: poetry --project=./python run mypy ./python
       - name: Run tests
-        run: poetry --project=./python run pytest --coverage
+        run: poetry --project=./python run pytest --cov
 
   publish-fpml-py-to-pypi:
     needs: build-and-test-fpml-py
