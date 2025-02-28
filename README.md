@@ -547,16 +547,18 @@ that will be transformed into:
 
 ## Examples
 
-See real-life examples of mappers for [FHIR](https://github.com/beda-software/FHIRPathMappingLanguage/blob/main/ts/server/src/utils/__data__/complex-example.fhir.yaml) and [Aidbox](https://github.com/beda-software/FHIRPathMappingLanguage/blob/main/ts/server/src/utils/__data__/complex-example.aidbox.yaml)
+See real-life examples of mappers for [FHIR](https://github.com/beda-software/FHIRPathMappingLanguage/blob/main/tests/__data__/complex-example.fhir.yaml) and [Aidbox](https://github.com/beda-software/FHIRPathMappingLanguage/blob/main/tests/__data__/complex-example.aidbox.yaml)
 
 and other usage in [unit tests](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/ts/server/src/utils).
 
 ## Reference implementation
 
-TypeScript implementation that supports all the specification is already available [in this repository](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/server).
+### TypeScript
+
+TypeScript implementation that supports all the specification is already available [in this repository](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/ts/server).
 Also, it is packed into a [docker image](https://hub.docker.com/r/bedasoftware/fhirpath-extract) to use as a microservice.
 
-### Usage
+#### Usage
 
 POST /r4/parse-template
 
@@ -577,7 +579,7 @@ POST /r4/parse-template
 }
 ```
 
-### Strict mode
+#### Strict mode
 
 FHIRPath provides a way of accessing the `resource` variables without the percent sign. It potentially leads to the issues made by typos in the variable names.
 
@@ -603,4 +605,46 @@ POST /r4/parse-template?strict=true
         "status": "completed"
     }
 }
+```
+
+### Python
+
+Python implementation that supports all the specification is already available [in this repository](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python).
+Also, it's available as a PyPI package under the name `fpml` and can be installed using
+```
+pip install fpml
+```
+
+#### Usage
+
+```python
+from fpml import resolve_template
+
+
+resource = {
+    "resourceType": "QuestionnaireResponse",
+    "status": "completed",
+    "item": [
+        {
+            "linkId": "name",
+            "answer": [
+                {
+                    "valueString": "Name"
+                }
+            ]
+        }
+    ]
+}
+
+template = {
+    "resourceType": "Patient",
+    "name": "{{ item.where(linkId='name').answer.valueString }}"
+}
+
+context = {}
+
+result = resolve_template(resource, template, context)
+
+print(result)
+# {'resourceType': 'Patient', 'name': 'Name'}
 ```
