@@ -3,7 +3,7 @@ on: [push, pull_request]
 env:
   BUILD_IMAGE: bedasoftware/fhirpath-extract:main
 jobs:
-  Build:
+  build-and-test-fpml-server-ts:
     runs-on: ubuntu-latest
     steps:
       - name: Copy repository
@@ -29,8 +29,8 @@ jobs:
         run: yarn test:e2e
         working-directory: ts/server
 
-  Publish:
-    needs: Build
+  publish-fpml-server-ts-to-dockerhub:
+    needs: build-and-test-fpml-server-ts
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -48,3 +48,41 @@ jobs:
           docker buildx build --platform linux/arm64,linux/amd64
           --push --tag ${{ env.BUILD_IMAGE }} .
         working-directory: ts/server
+
+  build-and-test-fpml-py:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - python-version: 3.9
+          - python-version: "3.10"
+          - python-version: "3.11"
+          - python-version: "3.12"
+          - python-version: "3.13"
+    env:
+      PYTHON: ${{ matrix.python-version }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run tests
+        run: pytest --coverage
+        shell: bash
+
+  publish-fpml-py-to-pypi:
+    needs: build-and-test-fpml-py
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11"
+      - name: Install wheel and build
+        run: pip install wheel build
+      - name: Build a binary wheel and a source tarball
+        run: poetry build
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@release/v1
