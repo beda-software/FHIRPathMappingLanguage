@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { FPOptions, resolveTemplate } from './utils/extract';
+import { FPOptions, resolveTemplate } from './core/extract';
 import * as fhirpath from 'fhirpath';
 
 @Injectable()

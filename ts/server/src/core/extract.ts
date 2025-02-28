@@ -115,13 +115,14 @@ function processTemplateString(
     model: Model,
     fpOptions: FPOptions,
 ) {
-    const templateRegExp = /{{\+?\s*([\s\S]+?)\s*\+?}}/g;
     let match:
         | RegExpExecArray
         | { [Symbol.replace](string: string, replaceValue: string): string }[];
+
+    const singleTemplateRegExp = /{{\+?\s*([\s\S]+?)\s*\+?}}/g;
     let result: any = node;
 
-    while ((match = templateRegExp.exec(node)) !== null) {
+    while ((match = singleTemplateRegExp.exec(node)) !== null) {
         const expr = match[1];
         const replacement = evaluateExpression(path, resource, expr, context, model, fpOptions)[0];
 

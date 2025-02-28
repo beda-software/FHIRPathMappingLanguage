@@ -1,5 +1,5 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpStatus } from '@nestjs/common';
-import { FPMLValidationError } from './utils/extract';
+import { FPMLValidationError } from './core/extract';
 
 @Catch(FPMLValidationError)
 export class FPMLValidationErrorFilter implements ExceptionFilter {
