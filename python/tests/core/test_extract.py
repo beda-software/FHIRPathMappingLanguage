@@ -9,7 +9,7 @@ from fpml.core.types import Resource
 def test_transformation_fails_on_access_props_of_resource_in_strict_mode() -> None:
     resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
     with pytest.raises(FPMLValidationError):
-        resolve_template(resource, {"key": "{{ list }}"}, {}, None, None, True)
+        resolve_template(resource, {"key": "{{ list }}"}, {}, None, True)
 
 
 def test_transformation_for_empty_object_return_empty_object() -> None:

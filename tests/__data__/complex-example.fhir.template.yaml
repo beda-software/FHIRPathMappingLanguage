@@ -9,7 +9,7 @@ body:
     - medConditions:
         "{% for answer in repeat(item).where(linkId in 'MEDCOND1' | 'MEDCOND2').answer.value %}": "{{ %answer }}"
     - observationEntries:
-        - "{% if %weight and %height %}":
+        - "{% if %weight.exists() and %height.exists() %}":
             "{% assign %}":
               - observationId: >-
                   {{

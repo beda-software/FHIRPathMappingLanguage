@@ -46,6 +46,7 @@ mypy = "^1.15.0"
 autohooks-plugin-mypy = "^23.10.0"
 autohooks-plugin-ruff = "^25.2.0"
 autohooks = "^25.2.0"
+pyyaml = "^6.0.2"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.4"
