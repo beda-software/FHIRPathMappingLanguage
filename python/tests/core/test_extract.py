@@ -125,6 +125,11 @@ def test_transformation_fails_with_incorrect_fhirpath_expression() -> None:
         resolve_template({}, "{{ item.where(linkId='a) }}")
 
 
+def test_transformation_for_array_template_works_properly() -> None:
+    resource: Resource = {"list": [{"key": 1}, {"key": 2}]}
+    assert resolve_template(resource, "{[ list.key ]}") == [1, 2]
+
+
 def test_context_block_resolve_template() -> None:
     resource: Resource = {
         "foo": "bar",

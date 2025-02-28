@@ -119,6 +119,14 @@ function processTemplateString(
         | RegExpExecArray
         | { [Symbol.replace](string: string, replaceValue: string): string }[];
 
+    const arrayTemplateRegExp = /{\[\s*([\s\S]+?)\s*\]}/g;
+    match = arrayTemplateRegExp.exec(node);
+    if (match) {
+        const expr = match[1];
+
+        return evaluateExpression(path, resource, expr, context, model, fpOptions);
+    }
+
     const singleTemplateRegExp = /{{\+?\s*([\s\S]+?)\s*\+?}}/g;
     let result: any = node;
 

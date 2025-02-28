@@ -125,10 +125,17 @@ def process_template_string(
     context: Context,
     fp_options: Optional[FPOptions],
 ) -> Any:
-    template_regexp = re.compile(r"{{\+?\s*([\s\S]+?)\s*\+?}}")
+    array_template_regexp = re.compile(r"{\[\s*([\s\S]+?)\s*\]}")
+
+    match = array_template_regexp.match(node)
+    if match:
+        expr = match.group(1)
+        return evaluate_expression(path, resource, expr, context, fp_options) 
+
+    single_template_regexp = re.compile(r"{{\+?\s*([\s\S]+?)\s*\+?}}")
     result = node
 
-    for match in template_regexp.finditer(node):
+    for match in single_template_regexp.finditer(node):
         expr = match.group(1)
         try:
             replacement = evaluate_expression(path, resource, expr, context, fp_options)[0]

@@ -2,12 +2,10 @@ body:
   "{% assign %}":
     - patientRef: "Patient/{{ %Patient.id }}"
     - recordedDate: "{{ %QuestionnaireResponse.authored }}"
-    - provenanceTargetIds:
-        "{% for id in %Provenance.target.select(reference.split('/').last()) %}": "{{ %id }}"
+    - provenanceTargetIds: "{[ %Provenance.target.select(reference.split('/').last()) ]}"
     - weight: "{{ repeat(item).where(linkId='WEIGHT').answer.value }}"
     - height: "{{ repeat(item).where(linkId='HEIGHT').answer.value }}"
-    - medConditions:
-        "{% for answer in repeat(item).where(linkId in 'MEDCOND1' | 'MEDCOND2').answer.value %}": "{{ %answer }}"
+    - medConditions: "{[ repeat(item).where(linkId in 'MEDCOND1' | 'MEDCOND2').answer.value ]}"
     - observationEntries:
         - "{% if %weight.exists() and %height.exists() %}":
             "{% assign %}":

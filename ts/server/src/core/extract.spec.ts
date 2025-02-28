@@ -121,6 +121,12 @@ describe('Transformation', () => {
             FPMLValidationError,
         );
     });
+
+    test('array template works properly', () => {
+        expect(resolveTemplate({ list: [{ key: 1 }, { key: 2 }] }, '{[ list.key ]}')).toStrictEqual(
+            [1, 2],
+        );
+    });
 });
 
 describe('Context block', () => {
