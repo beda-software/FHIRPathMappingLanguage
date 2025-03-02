@@ -195,6 +195,28 @@ The final mapper will look like this:
 }
 ```
 
+### Accessing array result of expression
+
+From the example above, it's clearly seen that the expression inside `{{ }}` always evaluated as the first element or null.
+
+There's a special syntax for accessing the whole array - `{[ expression ]}`.
+
+For example,
+
+```json
+{
+    "resourceType": "Patient",
+    "name": [
+        {
+            "given": "{[ QuestionnaireResponse.repeat(item).where(linkId='1').answer.value ]}"
+        }
+    ]
+}
+```
+
+In this example, the result of the evaluation of the expression will be always an array (empty or with results).
+
+
 ### Null key removal
 
 If an expression resolves to an empty set `{}`, the key will be removed from the object.
