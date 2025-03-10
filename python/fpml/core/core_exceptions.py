@@ -1,5 +1,5 @@
 from .constants import root_node_key
-from .types import Path
+from .core_types import Path
 
 
 class FPMLValidationError(Exception):

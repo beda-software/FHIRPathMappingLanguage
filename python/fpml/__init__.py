@@ -1,6 +1,6 @@
 import importlib.metadata
 
-from .core.exceptions import FPMLValidationError
+from .core.core_exceptions import FPMLValidationError
 from .core.extract import resolve_template
 
 __title__ = "fpml"

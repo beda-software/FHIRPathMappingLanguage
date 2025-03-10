@@ -6,8 +6,7 @@ from fhirpathpy import evaluate
 from fpml.core.guarded_resource import guarded_resource
 
 from .constants import root_node_key, undefined
-from .exceptions import FPMLValidationError
-from .types import (
+from .core_types import (
     Context,
     DictNode,
     FPOptions,
@@ -19,6 +18,7 @@ from .types import (
     StrNode,
     Transformer,
 )
+from .core_exceptions import FPMLValidationError
 from .utils import flatten, omit_key
 
 

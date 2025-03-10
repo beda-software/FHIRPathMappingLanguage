@@ -2,7 +2,7 @@ import pytest
 
 from fpml.core.constants import undefined
 from fpml.core.extract import FPMLValidationError, resolve_template
-from fpml.core.types import Resource, UserInvocationTable
+from fpml.core.core_types import Resource, UserInvocationTable
 
 
 def test_transformation_with_fp_options() -> None:
