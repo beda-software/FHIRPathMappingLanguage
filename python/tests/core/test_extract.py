@@ -202,6 +202,23 @@ def test_assign_block_single_var_as_object() -> None:
     ) == {"value": 100}
 
 
+def test_assign_block_with_undefined_intermediate_values() -> None:
+    resource: Resource = {
+        "resourceType": "Resource",
+        "sourceValue": 100,
+    }
+    assert resolve_template(
+        resource,
+        {
+            "{% assign %}": [
+                {"varA": "{{ {} }}"},
+                {"varB": "{{ %varA }}"},
+            ],
+            "valueA": "{{ %varB }}",
+        },
+    ) == {}
+
+
 def test_assign_block_multiple_vars_as_array_of_objects() -> None:
     resource: Resource = {
         "resourceType": "Resource",

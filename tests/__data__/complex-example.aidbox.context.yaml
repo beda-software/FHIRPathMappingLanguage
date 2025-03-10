@@ -7,12 +7,12 @@ QuestionnaireResponse:
       item:
         - linkId: WEIGHT
           answer:
-            value:
-              decimal: 100
+            - value:
+                decimal: 100
         - linkId: HEIGHT
           answer:
-            value:
-              decimal: 190
+            - value:
+                decimal: 190
         - linkId: MEDCOND1
           answer:
             - value:

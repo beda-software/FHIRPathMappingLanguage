@@ -7,10 +7,10 @@ QuestionnaireResponse:
       item:
         - linkId: WEIGHT
           answer:
-            valueDecimal: 100
+            - valueDecimal: 100
         - linkId: HEIGHT
           answer:
-            valueDecimal: 190
+            - valueDecimal: 190
         - linkId: MEDCOND1
           answer:
             - valueCoding:

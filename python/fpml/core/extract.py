@@ -321,25 +321,27 @@ def process_assign_block(
     extended_context = context.copy()
     assign_key = next((k for k in node if re.match(r"{%\s*assign\s*%}", k)), None)
     if assign_key:
+        # TODO: re-write without copy-pasting
         if isinstance(node[assign_key], list):
             for obj in node[assign_key]:
                 if len(obj) != 1:
                     raise FPMLValidationError(
                         "Assign block must accept only one key per object", path
                     )
-                extended_context.update(
-                    resolve_template_recur(path, resource, obj, extended_context, fp_options)
-                )
+                result = resolve_template_recur(path, resource, obj, extended_context, fp_options)
+                key = next(iter(obj.keys()))
+                extended_context.update({key: result.get(key, None)})
         elif isinstance(node[assign_key], dict) and len(node[assign_key]) == 1:
-            extended_context.update(
-                resolve_template_recur(
-                    path,
-                    resource,
-                    node[assign_key],
-                    extended_context,
-                    fp_options,
-                )
+            obj = node[assign_key]
+            result = resolve_template_recur(
+                path,
+                resource,
+                obj,
+                extended_context,
+                fp_options,
             )
+            key = next(iter(obj.keys()))
+            extended_context.update({key: result.get(key, None)})
         else:
             raise FPMLValidationError("Assign block must accept array or object", path)
         return omit_key(node, assign_key), extended_context
