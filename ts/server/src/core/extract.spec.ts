@@ -3,10 +3,36 @@ import { FPMLValidationError, resolveTemplate } from './extract';
 describe('Transformation', () => {
     const resource = { list: [{ key: 1 }, { key: 2 }, { key: 3 }] } as any;
 
-    test('fails on access props of resource in strict mode', () => {
+    test('fails on accessing props of resource in strict mode', () => {
         expect(() =>
-            resolveTemplate(resource, { key: '{{ list }}' }, {}, null, null, true),
+            resolveTemplate(resource, { key: '{{ list.key }}' }, {}, null, null, true),
         ).toThrow(FPMLValidationError);
+    });
+
+    test('works on accessing props of explicit context in strict mode', () => {
+        expect(
+            resolveTemplate(
+                resource,
+                { key: '{{ %Resource.list.key }}' },
+                { Resource: resource },
+                null,
+                null,
+                true,
+            ),
+        ).toStrictEqual({ key: 1 });
+    });
+
+    test('works on accessing props of implicit context in strict mode', () => {
+        expect(
+            resolveTemplate(
+                resource,
+                { key: '{{ %context.list.key }}' },
+                { Resource: resource },
+                null,
+                null,
+                true,
+            ),
+        ).toStrictEqual({ key: 1 });
     });
 
     test('for empty object return empty object', () => {

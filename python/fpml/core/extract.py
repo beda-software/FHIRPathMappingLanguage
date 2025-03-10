@@ -1,7 +1,9 @@
 import re
 from typing import Any, Optional, cast
 
-from fhirpathpy import evaluate  # type: ignore
+from fhirpathpy import evaluate
+
+from fpml.core.guarded_resource import guarded_resource
 
 from .constants import root_node_key, undefined
 from .exceptions import FPMLValidationError
@@ -27,13 +29,12 @@ def resolve_template(
     fp_options: Optional[FPOptions] = None,
     strict: bool = False,
 ) -> Any:
-    assert strict is False, "strict is not supported yet"
-
     return resolve_template_recur(
         [],
-        resource,
+        guarded_resource if strict else resource,
         template,
-        context or {},
+        # Pass resource as context because original is overriden by strict mode
+        {"context": resource, **(context or {})},
         fp_options,
     )
 
@@ -130,7 +131,7 @@ def process_template_string(
     match = array_template_regexp.match(node)
     if match:
         expr = match.group(1)
-        return evaluate_expression(path, resource, expr, context, fp_options) 
+        return evaluate_expression(path, resource, expr, context, fp_options)
 
     single_template_regexp = re.compile(r"{{\+?\s*([\s\S]+?)\s*\+?}}")
     result = node

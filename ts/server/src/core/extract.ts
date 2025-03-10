@@ -52,7 +52,7 @@ export function resolveTemplate(
         [],
         strict ? guardedResource : resource,
         template,
-        context,
+        { context: resource, ...(context ?? {}) },
         model,
         fpOptions,
     );
@@ -62,14 +62,14 @@ function resolveTemplateRecur(
     startPath: Path,
     resource: Resource,
     template: any,
-    initialContext?: Context,
+    initialContext: Context,
     model?: Model,
     fpOptions?: FPOptions,
 ): any {
     return iterateObject(
         startPath,
         { [rootNodeKey]: template },
-        initialContext ?? {},
+        initialContext,
         (path, node, context) => {
             if (isPlainObject(node)) {
                 const { node: newNode, context: newContext } = processAssignBlock(

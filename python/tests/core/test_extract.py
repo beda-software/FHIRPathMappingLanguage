@@ -5,11 +5,24 @@ from fpml.core.extract import FPMLValidationError, resolve_template
 from fpml.core.types import Resource
 
 
-@pytest.mark.skip("Strict mode is not implemented")
-def test_transformation_fails_on_access_props_of_resource_in_strict_mode() -> None:
+def test_transformation_fails_on_accessing_props_of_resource_in_strict_mode() -> None:
     resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
     with pytest.raises(FPMLValidationError):
-        resolve_template(resource, {"key": "{{ list }}"}, {}, None, True)
+        resolve_template(resource, {"key": "{{ list.key }}"}, {}, strict=True)
+
+
+def test_transformation_works_on_accessing_props_of_explicit_context_in_strict_mode() -> None:
+    resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
+    result = resolve_template(
+        resource, {"key": "{{ %Resource.list.key }}"}, {"Resource": resource}, strict=True
+    )
+    assert result == {"key": 1}
+
+
+def test_transformation_works_on_accessing_props_of_implicit_context_in_strict_mode() -> None:
+    resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
+    result = resolve_template(resource, {"key": "{{ %context.list.key }}"}, strict=True)
+    assert result == {"key": 1}
 
 
 def test_transformation_for_empty_object_return_empty_object() -> None:
