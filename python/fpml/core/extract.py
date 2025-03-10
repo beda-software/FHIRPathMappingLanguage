@@ -1,7 +1,7 @@
 import re
 from typing import Any, Optional, cast
 
-from fhirpathpy import evaluate
+from fhirpathpy import evaluate  # type: ignore
 
 from fpml.core.guarded_resource import guarded_resource
 
