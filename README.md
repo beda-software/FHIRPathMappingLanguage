@@ -575,6 +575,13 @@ and other usage in [unit tests](https://github.com/beda-software/FHIRPathMapping
 
 ## Reference implementation
 
+## Strict mode
+
+FHIRPath provides a way of accessing the `resource` variables without the percent sign. It potentially leads to the issues made by typos in the variable names.
+
+See the particular implementation for details of usage.
+
+
 ### TypeScript
 
 TypeScript implementation that supports all the specification is already available [in this repository](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/ts/server).
@@ -603,12 +610,9 @@ POST /r4/parse-template
 
 #### Strict mode
 
-FHIRPath provides a way of accessing the `resource` variables without the percent sign. It potentially leads to the issues made by typos in the variable names.
+There's a flag, called `strict` that is set to `false` by default. If it set to `true`, all accesses to the variables without the percent sign will be rejected and exception will be thrown.
 
-There's a runtime flag, called `strict` that is set to `false` by default. If it set to `true`, all accesses to the variables without the percent sign will be rejected and exception will be thrown.
-
-
-The previous example should be re-written as
+The previous example using strict mode:
 
 POST /r4/parse-template?strict=true
 
@@ -670,3 +674,43 @@ result = resolve_template(resource, template, context)
 print(result)
 # {'resourceType': 'Patient', 'name': 'Name'}
 ```
+
+#### Strict mode
+
+There's a flag, called `strict` that is set to `false` by default. If it set to `true`, all accesses to the variables without the percent sign will be rejected and exception will be thrown.
+
+Example:
+
+```python
+result = resolve_template(
+    resource,
+    template,
+    context,
+    strict=True
+)
+```
+
+
+
+#### User-defined functions
+
+There's an ability to pass user-defined functions through fp_options
+
+Example:
+
+```python
+user_invocation_table = {
+    "pow": {
+        "fn": lambda inputs, exp=2: [i**exp for i in inputs],
+        "arity": {0: [], 1: ["Integer"]},
+    }
+}
+
+result = resolve_template(
+    resource,
+    template,
+    context,
+    fp_options={'userInvocationTable': user_invocation_table}
+)
+```
+
