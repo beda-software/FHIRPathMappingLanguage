@@ -2,7 +2,23 @@ import pytest
 
 from fpml.core.constants import undefined
 from fpml.core.extract import FPMLValidationError, resolve_template
-from fpml.core.types import Resource
+from fpml.core.types import Resource, UserInvocationTable
+
+
+def test_transformation_with_fp_options() -> None:
+    resource: Resource = {"list": [{"key": 5}, {"key": 6}, {"key": 7}]}
+    user_invocation_table: UserInvocationTable = {
+        "pow": {
+            "fn": lambda inputs, exp=2: [i**exp for i in inputs],
+            "arity": {0: [], 1: ["Integer"]},
+        }
+    }
+    result = resolve_template(
+        resource,
+        {"key": "{{ list.key.pow(2) }}"},
+        fp_options={"userInvocationTable": user_invocation_table},
+    )
+    assert result == {"key": 25}
 
 
 def test_transformation_fails_on_accessing_props_of_resource_in_strict_mode() -> None:

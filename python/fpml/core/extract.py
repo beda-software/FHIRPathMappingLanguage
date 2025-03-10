@@ -35,7 +35,7 @@ def resolve_template(
         template,
         # Pass resource as context because original is overriden by strict mode
         {"context": resource, **(context or {})},
-        fp_options,
+        fp_options=fp_options,
     )
 
 
@@ -353,10 +353,10 @@ def evaluate_expression(
     context: Context,
     fp_options: Optional[FPOptions] = None,
 ) -> list[Any]:
-    fp_options_with_default = cast(FPOptions, fp_options or {})
-    model = fp_options_with_default.get("model")
+    fp_options_copy = cast(dict, fp_options or {}).copy()
+    model = fp_options_copy.pop("model", None)
 
     try:
-        return evaluate(resource, expression, context, model)
+        return evaluate(resource, expression, context, model, options=fp_options_copy)
     except Exception as exc:
         raise FPMLValidationError(f"Cannot evaluate '{expression}': {exc}", path) from exc

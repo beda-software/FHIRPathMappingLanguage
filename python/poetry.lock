@@ -222,14 +222,14 @@ test = ["pytest (>=6)"]
 
 [[package]]
 name = "fhirpathpy"
-version = "1.2.1"
+version = "2.0.0"
 description = "FHIRPath implementation in Python"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "fhirpathpy-1.2.1-py3-none-any.whl", hash = "sha256:b45c957d2de9e35c9eb19425de29cbc2e3f73d324576da09f305610e78153902"},
-    {file = "fhirpathpy-1.2.1.tar.gz", hash = "sha256:1e82a5199d6f63342a1f56b856a23b76875b4209ab9d29ab659b7bba686089cc"},
+    {file = "fhirpathpy-2.0.0-py3-none-any.whl", hash = "sha256:0f73ec9a09111ef1a79440786a9e5ee3ebbd31f3da80d26d87b82250279d5c58"},
+    {file = "fhirpathpy-2.0.0.tar.gz", hash = "sha256:52bf689262a8bccfdc26175e11bb9fda51495845487623a4470fc6f0c8f4cffc"},
 ]
 
 [package.dependencies]
@@ -991,4 +991,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<4.0"
-content-hash = "58d5217a9b7b09e59c595215e3a79375f2b449eedbc92aafc510f61c6f4e0d1a"
+content-hash = "b9f2834221d1c636a529dd01d2211ac23104e257503cf04f3dc4e2793d8064fe"

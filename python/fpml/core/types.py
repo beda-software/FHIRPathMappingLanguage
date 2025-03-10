@@ -1,5 +1,6 @@
-# noqa: A005
 from typing import Any, Callable, Optional, TypedDict, Union
+
+from typing_extensions import NotRequired
 
 Resource = dict[str, Any]
 Node = Any
@@ -17,8 +18,18 @@ class Model(TypedDict):
     path2Type: dict[str, str]
 
 
+class UserFnDefinition(TypedDict):
+    fn: Callable
+    arity: dict[int, list[str]]
+    nullable: NotRequired[bool]
+
+
+UserInvocationTable = dict[str, UserFnDefinition]
+
+
 class FPOptions(TypedDict):
-    model: Optional[Model]
+    model: NotRequired[Model]
+    userInvocationTable: NotRequired[UserInvocationTable]
 
 
 class MatcherResult(TypedDict):
