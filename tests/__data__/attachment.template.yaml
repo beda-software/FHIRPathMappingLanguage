@@ -1,0 +1,32 @@
+"{% assign %}":
+    - communicationRequestRef: "CommunicationRequest/{{ %QuestionnaireResponse.answers('communicationRequestId') }}"
+    - patientRef: "{{ %QuestionnaireResponse.answers('patient') }}"
+    - authorRef:
+        "{% if %QuestionnaireResponse.answers('authorResourceType') = 'Person' %}":
+          reference: "RelatedPerson/{{ %QuestionnaireResponse.answers('relatedPersonId') }}"
+          display: "{{ %QuestionnaireResponse.answers('authorName') }}"
+        "{% else %}":
+          reference: "{{ %QuestionnaireResponse.answers('authorResourceType') }}/{{ %QuestionnaireResponse.answers('authorId') }}"
+          display: "{{ %QuestionnaireResponse.answers('authorName') }}"
+
+
+    - text: "{{ %QuestionnaireResponse.answers('text') }}"
+    - payload:
+        - "{% for q in QuestionnaireResponse.item.answers('addQuestionnaire') %}":
+            contentReference: "{{ %q }}"
+        - "{% for a in QuestionnaireResponse.answers('recordMessage') %}":
+            contentAttachment: "{{ %a }}"
+        - "{% for a in QuestionnaireResponse.answers('upload-file-control-many') %}":
+            contentAttachment: "{{ %a }}"
+resource:
+        resourceType: Communication
+        status: in-progress
+        subject: "{{ %patientRef }}"
+        sender: "{{ %authorRef }}"
+        basedOn:
+          - reference: "{{ %communicationRequestRef }}"
+        note:
+          - text: "{{ %text }}"
+        payload:
+          "{% for p in %payload %}":
+            "{{ %p }}"

@@ -2,6 +2,7 @@ import os
 
 import pytest
 import yaml
+import json
 
 
 @pytest.fixture
@@ -24,4 +25,11 @@ def load_yaml_fixture(read_fixture):
         return yaml.load(read_fixture(filename), Loader=yaml.Loader)
 
     return wrapper
-        
+
+
+@pytest.fixture
+def load_json_fixture(read_fixture):
+    def wrapper(filename):
+        return json.loads(read_fixture(filename))
+
+    return wrapper

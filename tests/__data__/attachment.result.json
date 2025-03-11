@@ -1,0 +1,32 @@
+{
+    "resource": {
+        "payload": [
+            {
+                "contentReference": {
+                    "display": "11-14-year-well-being-visit",
+                    "reference": "Questionnaire/11-14-year-well-being-visit"
+                }
+            }
+        ],
+        "resourceType": "Communication",
+        "note": [
+            {
+                "text": "Please answer"
+            }
+        ],
+        "status": "in-progress",
+        "sender": {
+            "display": "Basic-1 Practitioner",
+            "reference": "Practitioner/practitioner1"
+        },
+        "basedOn": [
+            {
+                "reference": "CommunicationRequest/4d43116d-97b5-4766-9f54-5ea406425243"
+            }
+        ],
+        "subject": {
+            "display": "Testin Testovich",
+            "reference": "Patient/a57fe9a6-6fe1-4294-a7c1-2b2846bdf7d1"
+        }
+    }
+}
