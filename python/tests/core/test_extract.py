@@ -27,6 +27,12 @@ def test_transformation_fails_on_accessing_props_of_resource_in_strict_mode() ->
         resolve_template(resource, {"key": "{{ list.key }}"}, {}, strict=True)
 
 
+def test_transformation_fails_on_accessing_props_of_resource_with_capital_letter_in_strict_mode() -> None:
+    resource: Resource = {"resourceType": "Resource", "key": [1,2,3]}
+    with pytest.raises(FPMLValidationError):
+        resolve_template(resource, {"key": "{{ Resource.key }}"}, {}, strict=True)
+
+
 def test_transformation_works_on_accessing_props_of_explicit_context_in_strict_mode() -> None:
     resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
     result = resolve_template(

@@ -1,3 +1,7 @@
+## 0.1.2
+
+- Fix strict mode bug with accessing resource with capital letter #26
+
 ## 0.1.1
 
 - Add support for strict mode #24
