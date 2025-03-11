@@ -27,7 +27,7 @@ def test_transformation_fails_on_accessing_props_of_resource_in_strict_mode() ->
         resolve_template(resource, {"key": "{{ list.key }}"}, {}, strict=True)
 
 
-def test_transformation_fails_on_accessing_props_of_resource_with_capital_letter_in_strict_mode() -> None:
+def test_transformation_fails_on_accessing_props_of_resource_with_capital_letter_in_strict_mode() -> None:  # noqa: E501
     resource: Resource = {"resourceType": "Resource", "key": [1,2,3]}
     with pytest.raises(FPMLValidationError):
         resolve_template(resource, {"key": "{{ Resource.key }}"}, {}, strict=True)
