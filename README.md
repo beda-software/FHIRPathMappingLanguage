@@ -611,6 +611,7 @@ POST /r4/parse-template
 #### Strict mode
 
 There's a flag, called `strict` that is set to `false` by default. If it set to `true`, all accesses to the variables without the percent sign will be rejected and exception will be thrown.
+NOTE: there's a known issue with accessing the resource by resource type (e.g. QuestionnaireResponse.item), see details [here](https://github.com/beda-software/FHIRPathMappingLanguage/issues/27).
 
 The previous example using strict mode:
 

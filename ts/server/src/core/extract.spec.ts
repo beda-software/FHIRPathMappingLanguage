@@ -9,11 +9,24 @@ describe('Transformation', () => {
         ).toThrow(FPMLValidationError);
     });
 
-    test.skip('fails on accessing props of resource (with capital letter) in strict mode', () => {
+    test('fails on accessing props of resource (with capital letter) in strict mode', () => {
         expect(() =>
             resolveTemplate(
                 { resourceType: 'Resource', key: [1, 2, 3] },
                 { key: '{{ Resource.key }}' },
+                {},
+                null,
+                null,
+                true,
+            ),
+        ).toThrow(FPMLValidationError);
+    });
+
+    test.skip('fails on accessing props of undefined resource (with capital letter) in strict mode (issue #27)', () => {
+        expect(() =>
+            resolveTemplate(
+                { resourceType: 'Resource', key: [1, 2, 3] },
+                { key: '{{ UndefinedResource.key }}' },
                 {},
                 null,
                 null,

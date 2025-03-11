@@ -23,12 +23,15 @@ export class FPMLValidationError extends Error {
     }
 }
 
-const guardedResource = new Proxy(
-    {},
-    {
+const guardedResourceFactory = (resource: any) =>
+    new Proxy(resource, {
         get: (obj, prop) => {
-            if (prop === '__path__' || prop === 'resourceType') {
+            if (prop === '__path__') {
                 return undefined;
+            }
+
+            if (prop === 'resourceType') {
+                return obj.resourceType;
             }
 
             throw new Error(
@@ -37,8 +40,7 @@ const guardedResource = new Proxy(
                 )} in strict mode. Use context instead`,
             );
         },
-    },
-);
+    });
 
 export function resolveTemplate(
     resource: Resource,
@@ -50,7 +52,7 @@ export function resolveTemplate(
 ): any {
     return resolveTemplateRecur(
         [],
-        strict ? guardedResource : resource,
+        strict ? guardedResourceFactory(resource) : resource,
         template,
         { context: resource, ...(context ?? {}) },
         model,

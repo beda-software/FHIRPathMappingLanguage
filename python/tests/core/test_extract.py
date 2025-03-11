@@ -27,10 +27,20 @@ def test_transformation_fails_on_accessing_props_of_resource_in_strict_mode() ->
         resolve_template(resource, {"key": "{{ list.key }}"}, {}, strict=True)
 
 
-def test_transformation_fails_on_accessing_props_of_resource_with_capital_letter_in_strict_mode() -> None:  # noqa: E501
-    resource: Resource = {"resourceType": "Resource", "key": [1,2,3]}
+def test_transformation_fails_on_accessing_props_of_resource_with_capital_letter_in_strict_mode() -> (  # noqa: E501
+    None
+):
+    resource: Resource = {"resourceType": "Resource", "key": [1, 2, 3]}
     with pytest.raises(FPMLValidationError):
         resolve_template(resource, {"key": "{{ Resource.key }}"}, {}, strict=True)
+
+
+def test_transformation_fails_on_accessing_props_of_undefined_resource_with_capital_letter_in_strict_mode() -> (  # noqa: E501
+    None
+):
+    resource: Resource = {"resourceType": "Resource", "key": [1, 2, 3]}
+    with pytest.raises(FPMLValidationError):
+        resolve_template(resource, {"key": "{{ UndefinedResource.key }}"}, {}, strict=True)
 
 
 def test_transformation_works_on_accessing_props_of_explicit_context_in_strict_mode() -> None:
@@ -213,16 +223,19 @@ def test_assign_block_with_undefined_intermediate_values() -> None:
         "resourceType": "Resource",
         "sourceValue": 100,
     }
-    assert resolve_template(
-        resource,
-        {
-            "{% assign %}": [
-                {"varA": "{{ {} }}"},
-                {"varB": "{{ %varA }}"},
-            ],
-            "valueA": "{{ %varB }}",
-        },
-    ) == {}
+    assert (
+        resolve_template(
+            resource,
+            {
+                "{% assign %}": [
+                    {"varA": "{{ {} }}"},
+                    {"varB": "{{ %varA }}"},
+                ],
+                "valueA": "{{ %varB }}",
+            },
+        )
+        == {}
+    )
 
 
 def test_assign_block_multiple_vars_as_array_of_objects() -> None:
