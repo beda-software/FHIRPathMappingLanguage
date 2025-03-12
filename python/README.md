@@ -172,7 +172,7 @@ template = {
     "resourceType": "Patient",
     "name": [
         {
-            "text": "{{ item.where }}"  # <-- Invalid expression
+            "text": "{{ item.where( }}"  # <-- Invalid expression
         }
     ]
 }
@@ -188,8 +188,8 @@ except FPMLValidationError as e:
 
 Output:
 ```python
-"Validation error: Cannot evaluate `item.where(`: where wrong arity: got 0"
-"Error path: `name`"
+"Validation error: Cannot evaluate 'item.where(': where wrong arity: got 0"
+"Error path: `name.0.text`"
 ```
 
 ### Using strict mode
@@ -197,7 +197,7 @@ Output:
 In strict mode only context variables can be used (starting with percent sigh). Any access of the resource property will raise a validation error.
 
 ```python
-from fpml import FPMLValidationError, resolve_template
+from fpml import resolve_template
 
 
 template = {
@@ -216,15 +216,15 @@ resolve_template(resource, template, context, strict=True)
 ```
 
 Raises an error:
-```python
-Validation error: Cannot evaluate 'item': Forbidden access to resource property 'item' in strict mode. Use context instead.
+```
+FPMLValidationError: Cannot evaluate 'item.where(linkId='name').answer.valueString': "Forbidden access to resource property 'item' in strict mode. Use context instead.". Path 'name.0.text'
 ```
 
 Meanwhile using context:
 
 
 ```python
-from fpml import FPMLValidationError, resolve_template
+from fpml import resolve_template
 
 
 template = {
@@ -237,7 +237,6 @@ template = {
 }
 
 context = {"QuestionnaireResponse": resource}  # <-- Context 
-
 
 result = resolve_template(resource, template, context, strict=True)
 print(result)
