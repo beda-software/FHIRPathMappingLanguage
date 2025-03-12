@@ -28,6 +28,23 @@ UserInvocationTable = dict[str, UserFnDefinition]
 
 
 class FPOptions(TypedDict):
+    """
+    Optional parameters for controlling FHIRPath evaluation.
+
+    Attributes:
+        model (Optional[Model]):
+            An optional "model" data object specific to a domain, e.g. R4.
+            See https://github.com/beda-software/fhirpath-py?tab=readme-ov-file#using-data-models
+        userInvocationTable (Optional[UserInvocationTable]):
+            A table of user-defined functions that
+            can be used in FHIRPath expressions during template processing.
+            See https://github.com/beda-software/fhirpath-py?tab=readme-ov-file#user-defined-functions
+
+    See Also:
+    FHIRPath py Documentation:
+    https://github.com/beda-software/fhirpath-py?tab=readme-ov-file#fhirpathpy
+    """
+
     model: NotRequired[Model]
     userInvocationTable: NotRequired[UserInvocationTable]
 

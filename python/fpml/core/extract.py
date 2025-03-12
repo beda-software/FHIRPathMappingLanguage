@@ -29,6 +29,32 @@ def resolve_template(
     fp_options: Optional[FPOptions] = None,
     strict: bool = False,
 ) -> Any:
+    """
+    Processes a given template with the specified resource and optional context.
+
+    This function takes a FHIR resource and applies the provided template, optionally
+    using a context and additional processing options. The result is a transformed
+    representation of the template.
+
+    Args:
+        resource (Resource): The input FHIR resource to process.
+        template (Any): The template describing the transformation.
+        context (Optional[Context], optional): Additional context data. Defaults to None.
+        fp_options (Optional[FPOptions], optional): Options for controlling FHIRPath evaluation. Defaults to None.
+        strict (bool, optional): Whether to enforce strict mode. Defaults to False.
+            See more details on 
+            [strict mode](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main?tab=readme-ov-file#strict-mode).
+
+    Returns:
+        Any: The processed output based on the template.
+
+    Raises:
+        FPMLValidationError: If validation of the template or resource fails.
+
+    See Also:
+        FHIRPathMappingLanguage Specification:
+        https://github.com/beda-software/FHIRPathMappingLanguage/tree/main?tab=readme-ov-file#specification
+    """  # noqa: E501
     return resolve_template_recur(
         [],
         guarded_resource if strict else resource,
