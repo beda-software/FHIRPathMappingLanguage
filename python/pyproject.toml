@@ -1,6 +1,6 @@
 [project]
 name = "fpml"
-version = "0.1.2"
+version = "0.1.3"
 description = "The FHIRPath mapping language is a data DSL designed to convert data from QuestionnaireResponse (and not only) to any FHIR Resource."
 authors = [{ name = "Beda Software", email = "ilya@beda.software" }]
 maintainers = [

@@ -1,3 +1,7 @@
+## 0.1.3
+
+- Update documentation
+
 ## 0.1.2
 
 - Fix strict mode bug with accessing resource with capital letter #26
