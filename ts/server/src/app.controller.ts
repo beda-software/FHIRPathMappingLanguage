@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, UseFilters, Query } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, UseFilters, Query, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 import { Resource } from 'fhir/r4b';
 import * as fhirpath_r4_model from 'fhirpath/fhir-context/r4';
@@ -43,7 +43,7 @@ export class AppController {
     @Post('aidbox/parse-template')
     @HttpCode(200)
     resolveTemplateAidbox(@Body() body: Template, @Query() query: Options): object {
-        const { context, template, strict  } = body;
+        const { context, template, strict } = body;
 
         return this.appService.resolveTemplate(
             containsQuestionnaireResponse(context) ? context.QuestionnaireResponse : context,
@@ -52,5 +52,11 @@ export class AppController {
             null,
             query.strict ?? strict ?? false,
         );
+    }
+
+    @Get('health')
+    @HttpCode(200)
+    health() {
+        return { status: 'ok' };
     }
 }
