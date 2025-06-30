@@ -372,7 +372,7 @@ def process_assign_block(
                     for key, obj_value in obj.items()
                 }
                 key = next(iter(obj.keys()))
-                extended_context.update({key: result.get(key, None)})
+                extended_context.update({key: result.get(key)})
         elif isinstance(node[assign_key], dict) and len(node[assign_key]) == 1:
             obj = node[assign_key]
             result = {
@@ -380,7 +380,7 @@ def process_assign_block(
                 for key, obj_value in obj.items()
             }
             key = next(iter(obj.keys()))
-            extended_context.update({key: result.get(key, None)})
+            extended_context.update({key: result.get(key)})
         else:
             raise FPMLValidationError("Assign block must accept array or object", path)
         return omit_key(node, assign_key), extended_context
