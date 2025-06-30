@@ -95,11 +95,11 @@ describe('Transformation', () => {
     });
 
     test('for empty object return undefined', () => {
-        expect(resolveTemplate(resource, {})).toBeUndefined();
+        expect(resolveTemplate(resource, {})).toBeNull();
     });
 
     test('for empty array return undefined', () => {
-        expect(resolveTemplate(resource, [])).toBeUndefined();
+        expect(resolveTemplate(resource, [])).toBeNull();
     });
 
     test('for array of arrays returns flattened array', () => {
@@ -126,7 +126,7 @@ describe('Transformation', () => {
     });
 
     test('for object with undefined keys returns undefined', () => {
-        expect(resolveTemplate(resource, { key: undefined })).toBeUndefined();
+        expect(resolveTemplate(resource, { key: undefined })).toBeNull();
     });
 
     test('for object with undefined keys returns only defined keys', () => {
@@ -168,7 +168,7 @@ describe('Transformation', () => {
     });
 
     test('for empty array expression returns undefined', () => {
-        expect(resolveTemplate(resource, '{{ list.where($this = 0) }}')).toStrictEqual(undefined);
+        expect(resolveTemplate(resource, '{{ list.where($this = 0) }}')).toBeNull();
     });
 
     test('for empty array nullable expression returns null', () => {
@@ -187,7 +187,7 @@ describe('Transformation', () => {
                 resource,
                 '/Patient/{{ list.where($this = 0) }}/_history/{{ list.last() }}',
             ),
-        ).toStrictEqual(undefined);
+        ).toBeNull();
     });
 
     test('for empty array nullable template expression returns null', () => {
@@ -278,7 +278,7 @@ describe('Assign block', () => {
                 null,
                 true,
             ),
-        ).toBeUndefined();
+        ).toBeNull();
     });
 
     test('works with multiple vars as array of objects', () => {
@@ -520,7 +520,7 @@ describe('If block', () => {
                     "{% if key != 'value' %}": { nested: "{{ 'true' + key }}" },
                 },
             }),
-        ).toBeUndefined();
+        ).toBeNull();
     });
 
     test('returns null for falsy condition with nullable else branch', () => {

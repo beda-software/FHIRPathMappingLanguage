@@ -50,7 +50,7 @@ export function resolveTemplate(
     fpOptions?: FPOptions,
     strict?: boolean,
 ): any {
-    return resolveTemplateRecur(
+    const result = resolveTemplateRecur(
         [],
         strict ? guardedResourceFactory(resource) : resource,
         template,
@@ -58,6 +58,9 @@ export function resolveTemplate(
         model,
         fpOptions,
     );
+
+    // NOTE: for synchronization with Python implementation
+    return result === undefined ? null : result;
 }
 
 function resolveTemplateRecur(
@@ -412,12 +415,7 @@ function iterateObject(startPath: Path, obj: any, context: Context, transform: T
             .flatMap((value, index) => {
                 const result = transform([...startPath, index], value, context);
 
-                return iterateObject(
-                    [...startPath, index],
-                    result.node,
-                    result.context,
-                    transform,
-                );
+                return iterateObject([...startPath, index], result.node, result.context, transform);
             })
             .filter((x) => x !== null && x !== undefined);
         return cleanedArray.length ? cleanedArray : undefined;
