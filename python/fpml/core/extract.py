@@ -55,7 +55,7 @@ def resolve_template(
         FHIRPathMappingLanguage Specification:
         https://github.com/beda-software/FHIRPathMappingLanguage/tree/main?tab=readme-ov-file#specification
     """  # noqa: E501
-    return resolve_template_recur(
+    result = resolve_template_recur(
         [],
         guarded_resource if strict else resource,
         template,
@@ -63,6 +63,8 @@ def resolve_template(
         {"context": resource, **(context or {})},
         fp_options=fp_options,
     )
+
+    return None if result == undefined else result
 
 
 def resolve_template_recur(
