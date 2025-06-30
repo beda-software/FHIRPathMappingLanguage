@@ -62,7 +62,7 @@ def test_transformation_for_empty_object_return_empty_object() -> None:
 
 
 def test_transformation_for_empty_array_return_empty_array() -> None:
-    assert resolve_template({}, [])  is None
+    assert resolve_template({}, []) is None
 
 
 def test_transformation_for_array_of_arrays_returns_flattened_array() -> None:
