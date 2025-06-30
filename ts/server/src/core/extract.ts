@@ -428,9 +428,11 @@ function iterateObject(startPath: Path, obj: any, context: Context, transform: T
             return iterateObject([...startPath, key], result.node, result.context, transform);
         });
 
-        const cleanedObject = filterValues(objResult, (_key, value) => value !== undefined);
-
-        return Object.entries(cleanedObject).length ? cleanedObject : undefined;
+        const cleanedObject = Object.entries(objResult).filter(([, value]) => value !== undefined);
+        if (!cleanedObject.length) {
+            return undefined;
+        }
+        return Object.fromEntries(cleanedObject);
     }
 
     return transform(startPath, obj, context).node;
@@ -443,14 +445,6 @@ function isPlainObject(obj: any) {
 function mapValues(obj: object, fn: (value: any, key: string) => any) {
     return Object.fromEntries(
         Object.entries(obj).map(([key, value]) => {
-            return [key, fn(value, key)];
-        }),
-    );
-}
-
-function filterValues(obj: object, fn: (value: any, key: string) => any) {
-    return Object.fromEntries(
-        Object.entries(obj).filter(([key, value]) => {
             return [key, fn(value, key)];
         }),
     );
