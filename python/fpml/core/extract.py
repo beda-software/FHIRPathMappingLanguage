@@ -79,9 +79,9 @@ def resolve_template_recur(
         lambda path, node, context: process_node(path, resource, node, context, fp_options),
     )
     if isinstance(result, dict):
-        return result.get(root_node_key, None)
+        return result.get(root_node_key, undefined)
 
-    return None
+    return undefined
 
 
 def process_node(
@@ -148,10 +148,7 @@ def iterate_node(start_path: Path, node: Node, context: Context, transform: Tran
             if value is not undefined
         }
 
-        if len(cleaned_object) == 0:
-            return undefined
-
-        return cleaned_object
+        return cleaned_object or undefined
 
     return transform(start_path, node, context)[0]
 
@@ -367,20 +364,22 @@ def process_assign_block(
                     )
                 result = {
                     key: resolve_template_recur(
-                        path, resource, obj_value, extended_context, fp_options
+                        [*path, key], resource, obj_value, extended_context, fp_options
                     )
                     for key, obj_value in obj.items()
                 }
                 key = next(iter(obj.keys()))
-                extended_context.update({key: result.get(key)})
+                extended_context.update({key: result[key] if result[key] != undefined else None})
         elif isinstance(node[assign_key], dict) and len(node[assign_key]) == 1:
             obj = node[assign_key]
             result = {
-                key: resolve_template_recur(path, resource, obj_value, extended_context, fp_options)
+                key: resolve_template_recur(
+                    [*path, key], resource, obj_value, extended_context, fp_options
+                )
                 for key, obj_value in obj.items()
             }
             key = next(iter(obj.keys()))
-            extended_context.update({key: result.get(key)})
+            extended_context.update({key: result[key] if result[key] != undefined else None})
         else:
             raise FPMLValidationError("Assign block must accept array or object", path)
         return omit_key(node, assign_key), extended_context

@@ -58,11 +58,11 @@ def test_transformation_works_on_accessing_props_of_implicit_context_in_strict_m
 
 
 def test_transformation_for_empty_object_return_empty_object() -> None:
-    assert resolve_template({}, {}) is None
+    assert resolve_template({}, {}) == undefined
 
 
 def test_transformation_for_empty_array_return_empty_array() -> None:
-    assert resolve_template({}, []) is None
+    assert resolve_template({}, [])  == undefined
 
 
 def test_transformation_for_array_of_arrays_returns_flattened_array() -> None:
@@ -82,7 +82,7 @@ def test_transformation_for_object_with_null_keys_returns_null_keys() -> None:
 
 
 def test_transformation_for_object_with_undefined_keys_clears_undefined_keys() -> None:
-    assert resolve_template({}, {"key": undefined}) is None
+    assert resolve_template({}, {"key": undefined})  == undefined
 
 
 def test_transformation_for_object_with_non_null_keys_returns_non_null_keys() -> None:
@@ -97,7 +97,7 @@ def test_transformation_for_array_of_objects_returns_original_array() -> None:
 
 
 def test_transformation_for_null_returns_null() -> None:
-    assert resolve_template({}, None) is None
+    assert resolve_template({}, None)  == undefined
 
 
 def test_transformation_for_constant_string_returns_constant_string() -> None:
@@ -123,7 +123,7 @@ def test_transformation_for_non_empty_array_expression_return_first_element() ->
 
 def test_transformation_for_empty_array_expression_clears_undefined_keys() -> None:
     resource: Resource = {"list": []}
-    assert resolve_template(resource, {"result": "{{ list.where($this = 0) }}"})is None
+    assert resolve_template(resource, {"result": "{{ list.where($this = 0) }}"}) == undefined
 
 
 def test_transformation_for_empty_array_nullable_expression_returns_null() -> None:
@@ -148,7 +148,7 @@ def test_transformation_for_empty_array_template_expression_returns_undefined() 
             resource,
             "/Patient/{{ list.where($this = 0) }}/_history/{{ list.last() }}",
         )
-        is None
+        == undefined
     )
 
 
@@ -159,7 +159,7 @@ def test_transformation_for_empty_array_nullable_template_expression_returns_nul
             resource,
             "/Patient/{{+ list.where($this = 0) +}}/_history/{{ list.last() }}",
         )
-        is None
+        == undefined
     )
 
 
@@ -237,7 +237,7 @@ def test_assign_block_with_undefined_intermediate_values() -> None:
                 "valueA": "{{ %varB }}",
             },
         )
-        is None
+        == undefined
     )
 
 
@@ -511,7 +511,7 @@ def test_if_block_clears_undefined_keys_for_falsy_condition_without_else_branch(
             },
         },
     )
-    assert result is None
+    assert result == undefined
 
 
 def test_if_block_returns_null_for_falsy_condition_with_nullable_else_branch() -> None:
