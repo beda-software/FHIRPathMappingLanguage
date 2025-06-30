@@ -3,42 +3,16 @@ import { FPMLValidationError, resolveTemplate } from './extract';
 describe('Transformation', () => {
     const resource = { list: [{ key: 1 }, { key: 2 }, { key: 3 }] } as any;
 
-    // https://github.com/beda-software/FHIRPathMappingLanguage/issues/30
-    test.skip('null values are not removed', () => {
-        const resourceWithEmptyArrayNullable = {
-            root: { resourceType: 'Example', list: [null, { nested: null }, null] },
-        } as any;
-        expect(
-            resolveTemplate(
-                resourceWithEmptyArrayNullable,
-                { root: '{{ %Resource.root }}' },
-                { Resource: resourceWithEmptyArrayNullable },
-                null,
-                null,
-                true,
-            ),
-        ).toStrictEqual({ root: { resourceType: 'Example', list: [null, { nested: null }] } });
-    });
-
-    test('undefined value are removed', () => {
-        const resourceWithEmptyArray = {
-            root: { resourceType: 'Example', list: [undefined, { nested: undefined }] },
-        } as any;
-        expect(
-            resolveTemplate(
-                resourceWithEmptyArray,
-                { root: '{{ %Resource.root }}' },
-                { Resource: resourceWithEmptyArray },
-                null,
-                null,
-                true,
-            ),
-        ).toStrictEqual({ root: { resourceType: 'Example' } });
-    });
-
     test('fails on accessing props of resource in strict mode', () => {
         expect(() =>
-            resolveTemplate(resource, { key: '{{ list.key }}' }, {}, null, null, true),
+            resolveTemplate(
+                resource,
+                { resourceType: 'Resource', result: '{{ list.key }}' },
+                {},
+                null,
+                null,
+                true,
+            ),
         ).toThrow(FPMLValidationError);
     });
 
@@ -46,7 +20,7 @@ describe('Transformation', () => {
         expect(() =>
             resolveTemplate(
                 { resourceType: 'Resource', key: [1, 2, 3] },
-                { key: '{{ Resource.key }}' },
+                { resourceType: 'Resource', result: '{{ Resource.key }}' },
                 {},
                 null,
                 null,
@@ -59,7 +33,7 @@ describe('Transformation', () => {
         expect(() =>
             resolveTemplate(
                 { resourceType: 'Resource', key: [1, 2, 3] },
-                { key: '{{ UndefinedResource.key }}' },
+                { resourceType: 'Resource', result: '{{ UndefinedResource.key }}' },
                 {},
                 null,
                 null,
@@ -72,153 +46,213 @@ describe('Transformation', () => {
         expect(
             resolveTemplate(
                 resource,
-                { key: '{{ %Resource.list.key }}' },
+                { resourceType: 'Resource', result: '{{ %Resource.list.key }}' },
                 { Resource: resource },
                 null,
                 null,
                 true,
             ),
-        ).toStrictEqual({ key: 1 });
+        ).toStrictEqual({ resourceType: 'Resource', result: 1 });
     });
 
     test('works on accessing props of implicit context in strict mode', () => {
         expect(
             resolveTemplate(
                 resource,
-                { key: '{{ %context.list.key }}' },
+                { resourceType: 'Resource', result: '{{ %context.list.key }}' },
                 { Resource: resource },
                 null,
                 null,
                 true,
             ),
-        ).toStrictEqual({ key: 1 });
+        ).toStrictEqual({ resourceType: 'Resource', result: 1 });
     });
 
-    test('for empty object return undefined', () => {
-        expect(resolveTemplate(resource, {})).toBeNull();
-    });
-
-    test('for empty array return undefined', () => {
-        expect(resolveTemplate(resource, [])).toBeNull();
-    });
-
-    test('for array of arrays returns flattened array', () => {
+    test('removes undefined values from nested lists and arrays', () => {
         expect(
-            resolveTemplate(resource, [
-                [1, 2, 3],
-                [4, 5, 6],
-            ]),
-        ).toStrictEqual([1, 2, 3, 4, 5, 6]);
+            resolveTemplate(
+                resource,
+                { resourceType: 'Resource', list: [undefined, { nested: [undefined] }, undefined] },
+                {},
+                null,
+                null,
+                true,
+            ),
+        ).toStrictEqual({ resourceType: 'Resource' });
+    });
+
+    test('removes empty objects', () => {
+        expect(resolveTemplate(resource, { resourceType: 'Resource', key: {} })).toStrictEqual({
+            resourceType: 'Resource',
+        });
+    });
+
+    test('removes empty arrays', () => {
+        expect(resolveTemplate(resource, { resourceType: 'Resource', key: [] })).toStrictEqual({
+            resourceType: 'Resource',
+        });
+    });
+
+    test('flattens array of arrays', () => {
+        expect(
+            resolveTemplate(resource, {
+                resourceType: 'Resource',
+                result: [
+                    [1, 2, 3],
+                    [4, 5, 6],
+                ],
+            }),
+        ).toStrictEqual({
+            resourceType: 'Resource',
+            result: [1, 2, 3, 4, 5, 6],
+        });
     });
 
     test('preserves null values in array', () => {
-        expect(resolveTemplate(resource, [[1, null, 2, null, 3]])).toStrictEqual([
-            1,
-            null,
-            2,
-            null,
-            3,
-        ]);
+        expect(
+            resolveTemplate(resource, {
+                resourceType: 'Resource',
+                result: [1, null, 2, null, 3],
+            }),
+        ).toStrictEqual({ resourceType: 'Resource', result: [1, null, 2, null, 3] });
     });
 
     test('removes undefined values from array', () => {
-        expect(resolveTemplate(resource, [[1, undefined, 2, undefined, 3]])).toStrictEqual([1, 2, 3]);
+        expect(
+            resolveTemplate(resource, {
+                resourceType: 'Resource',
+                result: [1, undefined, 2, undefined, 3],
+            }),
+        ).toStrictEqual({ resourceType: 'Resource', result: [1, 2, 3] });
     });
 
-    test('for object with null keys returns null keys', () => {
-        expect(resolveTemplate(resource, { key: null })).toStrictEqual({ key: null });
+    test('preserves null values in object', () => {
+        expect(resolveTemplate(resource, { resourceType: 'Resource', result: null })).toStrictEqual(
+            {
+                resourceType: 'Resource',
+                result: null,
+            },
+        );
     });
 
-    test('for object with undefined keys returns undefined', () => {
-        expect(resolveTemplate(resource, { key: undefined })).toBeNull();
+    test('removes undefined values from object', () => {
+        expect(
+            resolveTemplate(resource, { resourceType: 'Resource', result: undefined }),
+        ).toStrictEqual({ resourceType: 'Resource' });
     });
 
-    test('for object with undefined keys returns only defined keys', () => {
-        expect(resolveTemplate(resource, { key: undefined, key2: 1 })).toStrictEqual({ key2: 1 });
+    test('preserves non null values in object', () => {
+        expect(resolveTemplate(resource, { resourceType: 'Resource', result: 1 })).toStrictEqual({
+            resourceType: 'Resource',
+            result: 1,
+        });
     });
 
-    test('for object with non-null keys returns non-null keys', () => {
-        expect(resolveTemplate(resource, { key: 1 })).toStrictEqual({ key: 1 });
-    });
-
-    test('for array of objects returns original array', () => {
+    test('preserves array of objects', () => {
         expect(resolveTemplate(resource, [{ list: [1, 2, 3] }, { list: [4, 5, 6] }])).toStrictEqual(
             [{ list: [1, 2, 3] }, { list: [4, 5, 6] }],
         );
     });
 
-    test('for null returns null', () => {
+    test('returns null for null', () => {
         expect(resolveTemplate(resource, null)).toStrictEqual(null);
     });
 
-    test('for constant string returns constant string', () => {
+    test('returns string for string', () => {
         expect(resolveTemplate(resource, 'string')).toStrictEqual('string');
     });
 
-    test('for constant number returns constant number', () => {
+    test('returns number for number', () => {
         expect(resolveTemplate(resource, 1)).toStrictEqual(1);
     });
 
-    test('for false returns false', () => {
+    test('returns boolean for boolean', () => {
         expect(resolveTemplate(resource, false)).toStrictEqual(false);
     });
 
-    test('for true returns true', () => {
+    test('returns true for true', () => {
         expect(resolveTemplate(resource, true)).toStrictEqual(true);
     });
 
-    test('for non-empty array expression return first element', () => {
-        expect(resolveTemplate(resource, '{{ list }}')).toStrictEqual({ key: 1 });
-    });
-
-    test('for empty array expression returns undefined', () => {
-        expect(resolveTemplate(resource, '{{ list.where($this = 0) }}')).toBeNull();
-    });
-
-    test('for empty array nullable expression returns null', () => {
-        expect(resolveTemplate(resource, '{{+ list.where($this = 0) +}}')).toStrictEqual(null);
-    });
-
-    test('for template expression returns resolved template', () => {
+    test('returns first element of array', () => {
         expect(
-            resolveTemplate(resource, '/{{ list[0].key }}/{{ list[1].key }}/{{ list[2].key }}'),
-        ).toStrictEqual('/1/2/3');
+            resolveTemplate(resource, { resourceType: 'Resource', result: '{{ list }}' }),
+        ).toStrictEqual({
+            resourceType: 'Resource',
+            result: { key: 1 },
+        });
     });
 
-    test('for empty array template expression returns undefined', () => {
+    test('returns undefined for undefined values in expression', () => {
         expect(
-            resolveTemplate(
-                resource,
-                '/Patient/{{ list.where($this = 0) }}/_history/{{ list.last() }}',
-            ),
-        ).toBeNull();
+            resolveTemplate(resource, {
+                resourceType: 'Resource',
+                result: '{{ list.where($this = 0) }}',
+            }),
+        ).toStrictEqual({ resourceType: 'Resource' });
     });
 
-    test('for empty array nullable template expression returns null', () => {
+    test('returns null for null values using null retention', () => {
         expect(
-            resolveTemplate(
-                resource,
-                '/Patient/{{+ list.where($this = 0) +}}/_history/{{ list.last() }}',
-            ),
-        ).toStrictEqual(null);
+            resolveTemplate(resource, {
+                resourceType: 'Resource',
+                result: '{{+ list.where($this = 0) +}}',
+            }),
+        ).toStrictEqual({ resourceType: 'Resource', result: null });
     });
 
-    test('for multiline template works properly', () => {
-        expect(resolveTemplate(resource, '{{\nlist.where(\n$this.key=1\n).key\n}}')).toStrictEqual(
-            1,
-        );
+    test('returns resolved template for template expression', () => {
+        expect(
+            resolveTemplate(resource, {
+                resourceType: 'Resource',
+                result: '/{{ list[0].key }}/{{ list[1].key }}/{{ list[2].key }}',
+            }),
+        ).toStrictEqual({ resourceType: 'Resource', result: '/1/2/3' });
+    });
+
+    test('removes undefined values for undefined values in complex expression', () => {
+        expect(
+            resolveTemplate(resource, {
+                resourceType: 'Resource',
+                result: '/Patient/{{ list.where($this = 0) }}/_history/{{ list.last() }}',
+            }),
+        ).toStrictEqual({ resourceType: 'Resource' });
+    });
+
+    test('preserves null values using null retention for complex expression', () => {
+        expect(
+            resolveTemplate(resource, {
+                resourceType: 'Resource',
+                result: '/Patient/{{+ list.where($this = 0) +}}/_history/{{ list.last() }}',
+            }),
+        ).toStrictEqual({ resourceType: 'Resource', result: null });
+    });
+
+    test('works properly for multiline template', () => {
+        expect(
+            resolveTemplate(resource, {
+                resourceType: 'Resource',
+                result: '{{\nlist.where(\n$this.key=1\n).key\n}}',
+            }),
+        ).toStrictEqual({ resourceType: 'Resource', result: 1 });
     });
 
     test('fails with incorrect fhirpath expression', () => {
-        expect(() => resolveTemplate({} as any, "{{ item.where(linkId='a) }}")).toThrowError(
-            FPMLValidationError,
-        );
+        expect(() =>
+            resolveTemplate({} as any, {
+                resourceType: 'Resource',
+                result: "{{ item.where(linkId='a) }}",
+            }),
+        ).toThrow(FPMLValidationError);
     });
 
     test('array template works properly', () => {
-        expect(resolveTemplate({ list: [{ key: 1 }, { key: 2 }] }, '{[ list.key ]}')).toStrictEqual(
-            [1, 2],
-        );
+        expect(
+            resolveTemplate(
+                { list: [{ key: 1 }, { key: 2 }] },
+                { resourceType: 'Resource', result: '{[ list.key ]}' },
+            ),
+        ).toStrictEqual({ resourceType: 'Resource', result: [1, 2] });
     });
 });
 
@@ -261,10 +295,12 @@ describe('Assign block', () => {
     test('works with single var as object', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 '{% assign %}': { var: 100 },
                 value: '{{ %var }}',
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             value: 100,
         });
     });
@@ -274,6 +310,7 @@ describe('Assign block', () => {
             resolveTemplate(
                 resource,
                 {
+                    resourceType: 'Resource',
                     '{% assign %}': [{ varA: '{{ {} }}' }, { varB: '{{ %varA }}' }],
                     valueA: '{{ %varB }}',
                 },
@@ -282,17 +319,19 @@ describe('Assign block', () => {
                 null,
                 true,
             ),
-        ).toBeNull();
+        ).toStrictEqual({ resourceType: 'Resource' });
     });
 
     test('works with multiple vars as array of objects', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 '{% assign %}': [{ varA: 100 }, { varB: '{{ %varA + 100}}' }],
                 valueA: '{{ %varA }}',
                 valueB: '{{ %varB }}',
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             valueA: 100,
             valueB: 200,
         });
@@ -301,6 +340,7 @@ describe('Assign block', () => {
     test('has isolated nested context', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 '{% assign %}': { varC: 100 },
                 nested: {
                     '{% assign %}': { varC: 200 },
@@ -309,6 +349,7 @@ describe('Assign block', () => {
                 valueC: '{{ %varC }}',
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             valueC: 100,
             nested: {
                 valueC: 200,
@@ -319,6 +360,7 @@ describe('Assign block', () => {
     test('works properly in full example', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 '{% assign %}': [
                     {
                         varA: {
@@ -345,6 +387,7 @@ describe('Assign block', () => {
                 valueC: '{{ %varC }}',
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             valueA: { x: 100 },
             valueB: 101,
             valueC: 0,
@@ -360,6 +403,7 @@ describe('Assign block', () => {
     test('fails with multiple keys in object', () => {
         expect(() =>
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 '{% assign %}': { varA: 100, varB: 200 },
                 value: '{{ %var }}',
             }),
@@ -369,6 +413,7 @@ describe('Assign block', () => {
     test('fails with multiple keys in array of objects', () => {
         expect(() =>
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 '{% assign %}': [{ varA: 100, varB: 200 }],
                 value: '{{ %var }}',
             }),
@@ -378,6 +423,7 @@ describe('Assign block', () => {
     test('fails with non-array and non-object as value', () => {
         expect(() =>
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 '{% assign %}': 1,
                 value: '{{ %var }}',
             }),
@@ -394,6 +440,7 @@ describe('For block', () => {
                     list: [{ key: 'a' }, { key: 'b' }, { key: 'c' }],
                 } as any,
                 {
+                    resourceType: 'Resource',
                     listArr: [
                         {
                             '{% for index, item in list %}': {
@@ -418,6 +465,7 @@ describe('For block', () => {
                 },
             ),
         ).toStrictEqual({
+            resourceType: 'Resource',
             listArr: [
                 { key: 'a', foo: 'bar', index: 0 },
                 { key: 'b', foo: 'bar', index: 1 },
@@ -437,6 +485,7 @@ describe('For block', () => {
     test('has context from local assign block', () => {
         expect(
             resolveTemplate({} as any, {
+                resourceType: 'Resource',
                 '{% assign %}': {
                     localList: [{ key: 'a' }, { key: 'b' }, { key: 'c' }],
                 },
@@ -449,6 +498,7 @@ describe('For block', () => {
                 ],
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             listArr: [{ key: 'a' }, { key: 'b' }, { key: 'c' }],
         });
     });
@@ -456,8 +506,11 @@ describe('For block', () => {
     test('fails with other keys passed', () => {
         expect(() =>
             resolveTemplate({ list: [1, 2, 3] } as any, {
-                userKey: 1,
-                '{% for key in %list %}': '{{ %key }}',
+                resourceType: 'Resource',
+                result: {
+                    userKey: 1,
+                    '{% for key in %list %}': '{{ %key }}',
+                },
             }),
         ).toThrowError(FPMLValidationError);
     });
@@ -471,23 +524,29 @@ describe('If block', () => {
     test('returns if branch for truthy condition at root level', () => {
         expect(
             resolveTemplate(resource, {
-                "{% if key = 'value' %}": { nested: "{{ 'true' + key }}" },
-                '{% else %}': { nested: "{{ 'false' + key }}" },
-            }),
-        ).toStrictEqual({
-            nested: 'truevalue',
-        });
-    });
-
-    test('returns if branch for truthy condition', () => {
-        expect(
-            resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     "{% if key = 'value' %}": { nested: "{{ 'true' + key }}" },
                     '{% else %}': { nested: "{{ 'false' + key }}" },
                 },
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
+            result: { nested: 'truevalue' },
+        });
+    });
+
+    test('returns if branch for truthy condition', () => {
+        expect(
+            resolveTemplate(resource, {
+                resourceType: 'Resource',
+                result: {
+                    "{% if key = 'value' %}": { nested: "{{ 'true' + key }}" },
+                    '{% else %}': { nested: "{{ 'false' + key }}" },
+                },
+            }),
+        ).toStrictEqual({
+            resourceType: 'Resource',
             result: { nested: 'truevalue' },
         });
     });
@@ -495,11 +554,13 @@ describe('If block', () => {
     test('returns if branch for truthy condition without else branch', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     "{% if key = 'value' %}": { nested: "{{ 'true' + key }}" },
                 },
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             result: { nested: 'truevalue' },
         });
     });
@@ -507,12 +568,14 @@ describe('If block', () => {
     test('returns else branch for falsy condition', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     "{% if key != 'value' %}": { nested: "{{ 'true' + key }}" },
                     '{% else %}': { nested: "{{ 'false' + key }}" },
                 },
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             result: { nested: 'falsevalue' },
         });
     });
@@ -520,22 +583,25 @@ describe('If block', () => {
     test('returns undefined for falsy condition without else branch', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     "{% if key != 'value' %}": { nested: "{{ 'true' + key }}" },
                 },
             }),
-        ).toBeNull();
+        ).toStrictEqual({ resourceType: 'Resource' });
     });
 
     test('returns null for falsy condition with nullable else branch', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     "{% if key != 'value' %}": { nested: "{{ 'true' + key }}" },
                     '{% else %}': '{{+ {} +}}',
                 },
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             result: null,
         });
     });
@@ -543,6 +609,7 @@ describe('If block', () => {
     test('returns if branch for nested if', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     "{% if key = 'value' %}": {
                         "{% if key = 'value' %}": 'value',
@@ -550,6 +617,7 @@ describe('If block', () => {
                 },
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             result: 'value',
         });
     });
@@ -557,6 +625,7 @@ describe('If block', () => {
     test('returns else branch for nested else', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     "{% if key != 'value' %}": null,
                     '{% else %}': {
@@ -566,6 +635,7 @@ describe('If block', () => {
                 },
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             result: 'value',
         });
     });
@@ -573,12 +643,14 @@ describe('If block', () => {
     test('implicitly merges with null returned', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     myKey: 1,
                     "{% if key = 'value' %}": null,
                 },
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             result: {
                 myKey: 1,
             },
@@ -588,12 +660,14 @@ describe('If block', () => {
     test('implicitly merges with undefined returned', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     myKey: 1,
                     "{% if key = 'value' %}": undefined,
                 },
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             result: {
                 myKey: 1,
             },
@@ -603,6 +677,7 @@ describe('If block', () => {
     test('implicitly merges with object returned for truthy condition', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     myKey: 1,
                     "{% if key = 'value' %}": {
@@ -611,6 +686,7 @@ describe('If block', () => {
                 },
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             result: {
                 myKey: 1,
                 anotherKey: 2,
@@ -621,6 +697,7 @@ describe('If block', () => {
     test('implicitly merges with object returned for falsy condition', () => {
         expect(
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     myKey: 1,
                     "{% if key != 'value' %}": {
@@ -632,6 +709,7 @@ describe('If block', () => {
                 },
             }),
         ).toStrictEqual({
+            resourceType: 'Resource',
             result: {
                 myKey: 1,
                 anotherKey: 3,
@@ -642,6 +720,7 @@ describe('If block', () => {
     test('fails on implicit merge with non-object returned from if branch', () => {
         expect(() =>
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     myKey: 1,
                     "{% if key = 'value' %}": [{ key1: true }],
@@ -653,6 +732,7 @@ describe('If block', () => {
     test('fails on implicit merge with non-object returned from else branch', () => {
         expect(() =>
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     myKey: 1,
                     "{% if key != 'value' %}": {},
@@ -665,6 +745,7 @@ describe('If block', () => {
     test('fails on multiple if blocks', () => {
         expect(() =>
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     myKey: 1,
                     "{% if key != 'value' %}": {},
@@ -677,6 +758,7 @@ describe('If block', () => {
     test('fails on multiple else blocks', () => {
         expect(() =>
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     myKey: 1,
                     "{% if key != 'value' %}": {},
@@ -690,6 +772,7 @@ describe('If block', () => {
     test('fails on else block without if block', () => {
         expect(() =>
             resolveTemplate(resource, {
+                resourceType: 'Resource',
                 result: {
                     myKey: 1,
                     '{% else %}': {},
@@ -707,52 +790,79 @@ describe('Merge block', () => {
     test('implicitly merges into the node', () => {
         expect(
             resolveTemplate(resource, {
-                b: 1,
-                '{% merge %}': { a: 1 },
+                resourceType: 'Resource',
+                result: {
+                    b: 1,
+                    '{% merge %}': { a: 1 },
+                },
             }),
         ).toStrictEqual({
-            b: 1,
-            a: 1,
+            resourceType: 'Resource',
+            result: {
+                b: 1,
+                a: 1,
+            },
         });
     });
 
     test('merges multiple blocks within order', () => {
         expect(
             resolveTemplate(resource, {
-                '{% merge %}': [{ a: 1 }, { b: 2 }, { a: 3 }],
+                resourceType: 'Resource',
+                result: {
+                    '{% merge %}': [{ a: 1 }, { b: 2 }, { a: 3 }],
+                },
             }),
         ).toStrictEqual({
-            a: 3,
-            b: 2,
+            resourceType: 'Resource',
+            result: {
+                a: 3,
+                b: 2,
+            },
         });
     });
 
     test('merges multiple blocks containing nulls', () => {
         expect(
             resolveTemplate(resource, {
-                '{% merge %}': [{ a: 1 }, null, { b: 2 }],
+                resourceType: 'Resource',
+                result: {
+                    '{% merge %}': [{ a: 1 }, null, { b: 2 }],
+                },
             }),
         ).toStrictEqual({
-            a: 1,
-            b: 2,
+            resourceType: 'Resource',
+            result: {
+                a: 1,
+                b: 2,
+            },
         });
     });
 
     test('merges multiple blocks containing undefined', () => {
         expect(
             resolveTemplate(resource, {
-                '{% merge %}': [{ a: 1 }, undefined, { b: 2 }],
+                resourceType: 'Resource',
+                result: {
+                    '{% merge %}': [{ a: 1 }, undefined, { b: 2 }],
+                },
             }),
         ).toStrictEqual({
-            a: 1,
-            b: 2,
+            resourceType: 'Resource',
+            result: {
+                a: 1,
+                b: 2,
+            },
         });
     });
 
     test('fails on merge with non-object', () => {
         expect(() =>
             resolveTemplate(resource, {
-                '{% merge %}': [1, 2],
+                resourceType: 'Resource',
+                result: {
+                    '{% merge %}': [1, 2],
+                },
             }),
         ).toThrow(FPMLValidationError);
     });

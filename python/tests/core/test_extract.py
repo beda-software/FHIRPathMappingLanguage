@@ -15,16 +15,18 @@ def test_transformation_with_fp_options() -> None:
     }
     result = resolve_template(
         resource,
-        {"key": "{{ list.key.pow(2) }}"},
+        {"resourceType": "Resource", "result": "{{ list.key.pow(2) }}"},
         fp_options={"userInvocationTable": user_invocation_table},
     )
-    assert result == {"key": 25}
+    assert result == {"resourceType": "Resource", "result": 25}
 
 
 def test_transformation_fails_on_accessing_props_of_resource_in_strict_mode() -> None:
     resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
     with pytest.raises(FPMLValidationError):
-        resolve_template(resource, {"key": "{{ list.key }}"}, {}, strict=True)
+        resolve_template(
+            resource, {"resourceType": "Resource", "result": "{{ list.key }}"}, {}, strict=True
+        )
 
 
 def test_transformation_fails_on_accessing_props_of_resource_with_capital_letter_in_strict_mode() -> (  # noqa: E501
@@ -32,7 +34,9 @@ def test_transformation_fails_on_accessing_props_of_resource_with_capital_letter
 ):
     resource: Resource = {"resourceType": "Resource", "key": [1, 2, 3]}
     with pytest.raises(FPMLValidationError):
-        resolve_template(resource, {"key": "{{ Resource.key }}"}, {}, strict=True)
+        resolve_template(
+            resource, {"resourceType": "Resource", "result": "{{ Resource.key }}"}, {}, strict=True
+        )
 
 
 def test_transformation_fails_on_accessing_props_of_undefined_resource_with_capital_letter_in_strict_mode() -> (  # noqa: E501
@@ -40,142 +44,198 @@ def test_transformation_fails_on_accessing_props_of_undefined_resource_with_capi
 ):
     resource: Resource = {"resourceType": "Resource", "key": [1, 2, 3]}
     with pytest.raises(FPMLValidationError):
-        resolve_template(resource, {"key": "{{ UndefinedResource.key }}"}, {}, strict=True)
+        resolve_template(
+            resource,
+            {"resourceType": "Resource", "result": "{{ UndefinedResource.key }}"},
+            {},
+            strict=True,
+        )
 
 
 def test_transformation_works_on_accessing_props_of_explicit_context_in_strict_mode() -> None:
     resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
     result = resolve_template(
-        resource, {"key": "{{ %Resource.list.key }}"}, {"Resource": resource}, strict=True
+        resource,
+        {"resourceType": "Resource", "result": "{{ %Resource.list.key }}"},
+        {"Resource": resource},
+        strict=True,
     )
-    assert result == {"key": 1}
+    assert result == {"resourceType": "Resource", "result": 1}
 
 
 def test_transformation_works_on_accessing_props_of_implicit_context_in_strict_mode() -> None:
     resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
-    result = resolve_template(resource, {"key": "{{ %context.list.key }}"}, strict=True)
-    assert result == {"key": 1}
+    result = resolve_template(
+        resource, {"resourceType": "Resource", "result": "{{ %context.list.key }}"}, strict=True
+    )
+    assert result == {"resourceType": "Resource", "result": 1}
 
 
-def test_transformation_for_empty_object_return_empty_object() -> None:
-    assert resolve_template({}, {}) is None
+def test_transformation_undefined_values_are_removed_from_nested_lists_and_arrays() -> None:
+    result = resolve_template(
+        {},
+        {"resourceType": "Resource", "result": [undefined, {"nested": [undefined]}, undefined]},
+        {},
+        strict=True,
+    )
+    assert result == {"resourceType": "Resource"}
 
 
-def test_transformation_for_empty_array_return_empty_array() -> None:
-    assert resolve_template({}, []) is None
-
-
-def test_transformation_preserve_null_values_from_array() -> None:
-    assert resolve_template({}, [[1, 2, 3], [4, 5, 6]]) == [1, 2, 3, 4, 5, 6]
-
-
-def test_transformation_remove_undefined_values_from_array() -> None:
-    assert resolve_template({}, [[1, None, 2, None, 3]]) == [1, None, 2, None, 3]
-
-
-def test_transformation_for_array_with_undefined_values_returns_compacted_array() -> None:
-    assert resolve_template({}, [[1, undefined, 2, undefined, 3]]) == [1, 2, 3]
-
-
-def test_transformation_for_object_with_null_keys_returns_null_keys() -> None:
-    assert resolve_template({}, {"key": None}) == {"key": None}
-
-
-def test_transformation_for_object_with_undefined_keys_removes_undefined_keys() -> None:
-    assert resolve_template({}, {"key": undefined}) is None
-
-
-def test_transformation_for_object_with_non_null_keys_returns_non_null_keys() -> None:
-    assert resolve_template({}, {"key": 1}) == {"key": 1}
-
-
-def test_transformation_for_array_of_objects_returns_original_array() -> None:
-    assert resolve_template({}, [{"list": [1, 2, 3]}, {"list": [4, 5, 6]}]) == [
-        {"list": [1, 2, 3]},
-        {"list": [4, 5, 6]},
-    ]
-
-
-def test_transformation_for_null_returns_null() -> None:
-    assert resolve_template({}, None) is None
-
-
-def test_transformation_for_constant_string_returns_constant_string() -> None:
-    assert resolve_template({}, "string") == "string"
-
-
-def test_transformation_for_constant_number_returns_constant_number() -> None:
-    assert resolve_template({}, 1) == 1
-
-
-def test_transformation_for_false_returns_false() -> None:
-    assert resolve_template({}, False) is False
-
-
-def test_transformation_for_true_returns_true() -> None:
-    assert resolve_template({}, True) is True
-
-
-def test_transformation_for_non_empty_array_expression_return_first_element() -> None:
-    resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
-    assert resolve_template(resource, "{{ list }}") == {"key": 1}
-
-
-def test_transformation_for_empty_array_expression_removes_undefined_keys() -> None:
-    resource: Resource = {"list": []}
-    assert resolve_template(resource, {"result": "{{ list.where($this = 0) }}"}) is None
-
-
-def test_transformation_for_empty_array_nullable_expression_returns_null() -> None:
-    resource: Resource = {"list": []}
-    assert resolve_template(resource, {"result": "{{+ list.where($this = 0) +}}"}) == {
-        "result": None
+def test_transformation_removes_empty_objects() -> None:
+    assert resolve_template({}, {"resourceType": "Resource", "result": {}}) == {
+        "resourceType": "Resource"
     }
 
 
-def test_transformation_for_template_expression_returns_resolved_template() -> None:
+def test_transformation_removes_empty_arrays() -> None:
+    assert resolve_template({}, {"resourceType": "Resource", "result": []}) == {
+        "resourceType": "Resource"
+    }
+
+
+def test_transformation_flattens_array_of_arrays() -> None:
+    assert resolve_template({}, {"resourceType": "Resource", "result": [[1, 2, 3], [4, 5, 6]]}) == {
+        "resourceType": "Resource",
+        "result": [1, 2, 3, 4, 5, 6],
+    }
+
+
+def test_transformation_preserves_null_values_from_array() -> None:
+    assert resolve_template({}, {"resourceType": "Resource", "result": [1, None, 2, None, 3]}) == {
+        "resourceType": "Resource",
+        "result": [1, None, 2, None, 3],
+    }
+
+
+def test_transformation_removes_undefined_values_from_array() -> None:
+    assert resolve_template(
+        {}, {"resourceType": "Resource", "result": [1, undefined, 2, undefined, 3]}
+    ) == {"resourceType": "Resource", "result": [1, 2, 3]}
+
+
+def test_transformation_preserves_null_values_in_object() -> None:
+    assert resolve_template({}, {"resourceType": "Resource", "result": None}) == {
+        "resourceType": "Resource",
+        "result": None,
+    }
+
+
+def test_transformation_removes_undefined_values_from_object() -> None:
+    assert resolve_template({}, {"resourceType": "Resource", "result": undefined}) == {
+        "resourceType": "Resource"
+    }
+
+
+def test_transformation_preserves_non_null_values_in_object() -> None:
+    assert resolve_template({}, {"resourceType": "Resource", "result": 1}) == {
+        "resourceType": "Resource",
+        "result": 1,
+    }
+
+
+def test_transformation_preserves_array_of_objects() -> None:
+    assert resolve_template(
+        {}, {"resourceType": "Resource", "result": [{"list": [1, 2, 3]}, {"list": [4, 5, 6]}]}
+    ) == {"resourceType": "Resource", "result": [{"list": [1, 2, 3]}, {"list": [4, 5, 6]}]}
+
+
+def test_transformation_returns_null_for_null() -> None:
+    assert resolve_template({}, None) is None
+
+
+def test_transformation_returns_string_for_string() -> None:
+    assert resolve_template({}, "string") == "string"
+
+
+def test_transformation_returns_number_for_number() -> None:
+    assert resolve_template({}, 1) == 1
+
+
+def test_transformation_returns_false_for_false() -> None:
+    assert resolve_template({}, False) is False
+
+
+def test_transformation_returns_true_for_true() -> None:
+    assert resolve_template({}, True) is True
+
+
+def test_transformation_returns_null_for_undefined() -> None:
+    assert resolve_template({}, undefined) is None
+
+
+def test_transformation_returns_first_element_of_array() -> None:
     resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
-    assert (
-        resolve_template(resource, "/{{ list[0].key }}/{{ list[1].key }}/{{ list[2].key }}")
-        == "/1/2/3"
-    )
+    assert resolve_template(resource, {"resourceType": "Resource", "result": "{{ list }}"}) == {
+        "resourceType": "Resource",
+        "result": {"key": 1},
+    }
 
 
-def test_transformation_for_empty_array_template_expression_returns_undefined() -> None:
+def test_transformation_removes_undefined_values_for_undefined_values_in_expression() -> None:
+    resource: Resource = {"list": []}
+    assert resolve_template(
+        resource, {"resourceType": "Resource", "result": "{{ list.where($this = 0) }}"}
+    ) == {"resourceType": "Resource"}
+
+
+def test_transformation_preserves_null_values_using_null_retention() -> None:
+    resource: Resource = {"list": []}
+    assert resolve_template(
+        resource, {"resourceType": "Resource", "result": "{{+ list.where($this = 0) +}}"}
+    ) == {"resourceType": "Resource", "result": None}
+
+
+def test_transformation_returns_resolved_template_for_template_expression() -> None:
     resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
-    assert (
-        resolve_template(
-            resource,
-            "/Patient/{{ list.where($this = 0) }}/_history/{{ list.last() }}",
-        )
-        is None
-    )
+    assert resolve_template(
+        resource,
+        {
+            "resourceType": "Resource",
+            "result": "/{{ list[0].key }}/{{ list[1].key }}/{{ list[2].key }}",
+        },
+    ) == {"resourceType": "Resource", "result": "/1/2/3"}
 
 
-def test_transformation_for_empty_array_nullable_template_expression_returns_null() -> None:
+def test_transformation_removes_undefined_values_for_undefined_values_in_complex_expression() -> None:
     resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
-    assert (
-        resolve_template(
-            resource,
-            "/Patient/{{+ list.where($this = 0) +}}/_history/{{ list.last() }}",
-        )
-        is None
-    )
+    assert resolve_template(
+        resource,
+        {
+            "resourceType": "Resource",
+            "result": "/Patient/{{ list.where($this = 0) }}/_history/{{ list.last() }}",
+        },
+    ) == {"resourceType": "Resource"}
 
 
-def test_transformation_for_multiline_template_works_properly() -> None:
+def test_transformation_preserves_null_values_using_null_retention_for_complex_expression() -> None:
+    resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
+    assert resolve_template(
+        resource,
+        {
+            "resourceType": "Resource",
+            "result": "/Patient/{{+ list.where($this = 0) +}}/_history/{{ list.last() }}",
+        },
+    ) == {"resourceType": "Resource", "result": None}
+
+
+def test_transformation_works_properly_for_multiline_template() -> None:
     resource: Resource = {"list": [{"key": 1}]}
-    assert resolve_template(resource, "{{\nlist.where(\n$this.key=1\n).key\n}}") == 1
+    assert resolve_template(
+        resource, {"resourceType": "Resource", "result": "{{\nlist.where(\n$this.key=1\n).key\n}}"}
+    ) == {"resourceType": "Resource", "result": 1}
 
 
 def test_transformation_fails_with_incorrect_fhirpath_expression() -> None:
     with pytest.raises(FPMLValidationError):
-        resolve_template({}, "{{ item.where(linkId='a) }}")
+        resolve_template({}, {"resourceType": "Resource", "result": "{{ item.where(linkId='a) }}"})
 
 
-def test_transformation_for_array_template_works_properly() -> None:
+def test_transformation_works_properly_for_array_template() -> None:
     resource: Resource = {"list": [{"key": 1}, {"key": 2}]}
-    assert resolve_template(resource, "{[ list.key ]}") == [1, 2]
+    assert resolve_template(resource, {"resourceType": "Resource", "result": "{[ list.key ]}"}) == {
+        "resourceType": "Resource",
+        "result": [1, 2],
+    }
 
 
 def test_context_block_resolve_template() -> None:
@@ -184,7 +244,8 @@ def test_context_block_resolve_template() -> None:
         "list": [{"key": "a"}, {"key": "b"}, {"key": "c"}],
     }
     template = {
-        "list": {
+        "resourceType": "Resource",
+        "result": {
             "{{ list }}": {
                 "key": "{{ key }}",
                 "foo": "{{ %root.foo }}",
@@ -195,11 +256,12 @@ def test_context_block_resolve_template() -> None:
     context = {"root": resource}
 
     expected_result = {
-        "list": [
+        "resourceType": "Resource",
+        "result": [
             {"key": "a", "foo": "bar"},
             {"key": "b", "foo": "bar"},
             {"key": "c", "foo": "bar"},
-        ]
+        ],
     }
 
     result = resolve_template(resource, template, context)
@@ -215,10 +277,11 @@ def test_assign_block_single_var_as_object() -> None:
     assert resolve_template(
         resource,
         {
+            "resourceType": "Resource",
             "{% assign %}": {"var": 100},
             "value": "{{ %var }}",
         },
-    ) == {"value": 100}
+    ) == {"resourceType": "Resource", "value": 100}
 
 
 def test_assign_block_with_undefined_intermediate_values() -> None:
@@ -226,19 +289,17 @@ def test_assign_block_with_undefined_intermediate_values() -> None:
         "resourceType": "Resource",
         "sourceValue": 100,
     }
-    assert (
-        resolve_template(
-            resource,
-            {
-                "{% assign %}": [
-                    {"varA": "{{ {} }}"},
-                    {"varB": "{{ %varA }}"},
-                ],
-                "valueA": "{{ %varB }}",
-            },
-        )
-        is None
-    )
+    assert resolve_template(
+        resource,
+        {
+            "resourceType": "Resource",
+            "{% assign %}": [
+                {"varA": "{{ {} }}"},
+                {"varB": "{{ %varA }}"},
+            ],
+            "valueA": "{{ %varB }}",
+        },
+    ) == {"resourceType": "Resource"}
 
 
 def test_assign_block_multiple_vars_as_array_of_objects() -> None:
@@ -371,6 +432,7 @@ def test_for_block_resolve_template_full_example() -> None:
         "list": [{"key": "a"}, {"key": "b"}, {"key": "c"}],
     }
     template = {
+        "resourceType": "Resource",
         "listArr": [
             {
                 "{% for index, item in list %}": {
@@ -394,6 +456,7 @@ def test_for_block_resolve_template_full_example() -> None:
         },
     }
     expected_result = {
+        "resourceType": "Resource",
         "listArr": [
             {"key": "a", "foo": "bar", "index": 0},
             {"key": "b", "foo": "bar", "index": 1},
@@ -413,6 +476,7 @@ def test_for_block_resolve_template_full_example() -> None:
 
 def test_for_block_resolve_template_local_assign() -> None:
     template = {
+        "resourceType": "Resource",
         "{% assign %}": {
             "localList": [{"key": "a"}, {"key": "b"}, {"key": "c"}],
         },
@@ -424,15 +488,21 @@ def test_for_block_resolve_template_local_assign() -> None:
             },
         ],
     }
-    expected_result = {"listArr": [{"key": "a"}, {"key": "b"}, {"key": "c"}]}
+    expected_result = {
+        "resourceType": "Resource",
+        "listArr": [{"key": "a"}, {"key": "b"}, {"key": "c"}],
+    }
     assert resolve_template({}, template) == expected_result
 
 
 def test_for_block_resolve_template_fails_with_other_keys() -> None:
     context = {"list": [1, 2, 3]}
     template = {
+        "resourceType": "Resource",
+        "result": {
         "userKey": 1,
         "{% for key in %list %}": "{{ %key }}",
+        }
     }
     with pytest.raises(FPMLValidationError):
         resolve_template(context, template)
@@ -445,11 +515,14 @@ def test_if_block_returns_if_branch_for_truthy_condition_at_root_level() -> None
     result = resolve_template(
         resource,
         {
-            "{% if key = 'value' %}": {"nested": "{{ 'true' + key }}"},
-            "{% else %}": {"nested": "{{ 'false' + key }}"},
+            "resourceType": "Resource",
+            "result": {
+                "{% if key = 'value' %}": {"nested": "{{ 'true' + key }}"},
+                "{% else %}": {"nested": "{{ 'false' + key }}"},
+            },
         },
     )
-    assert result == {"nested": "truevalue"}
+    assert result == {"resourceType": "Resource", "result": {"nested": "truevalue"}}
 
 
 def test_if_block_returns_if_branch_for_truthy_condition() -> None:
@@ -459,13 +532,14 @@ def test_if_block_returns_if_branch_for_truthy_condition() -> None:
     result = resolve_template(
         resource,
         {
+            "resourceType": "Resource",
             "result": {
                 "{% if key = 'value' %}": {"nested": "{{ 'true' + key }}"},
                 "{% else %}": {"nested": "{{ 'false' + key }}"},
             },
         },
     )
-    assert result == {"result": {"nested": "truevalue"}}
+    assert result == {"resourceType": "Resource", "result": {"nested": "truevalue"}}
 
 
 def test_if_block_returns_if_branch_for_truthy_condition_without_else_branch() -> None:
@@ -475,12 +549,13 @@ def test_if_block_returns_if_branch_for_truthy_condition_without_else_branch() -
     result = resolve_template(
         resource,
         {
+            "resourceType": "Resource",
             "result": {
                 "{% if key = 'value' %}": {"nested": "{{ 'true' + key }}"},
             },
         },
     )
-    assert result == {"result": {"nested": "truevalue"}}
+    assert result == {"resourceType": "Resource", "result": {"nested": "truevalue"}}
 
 
 def test_if_block_returns_else_branch_for_falsy_condition() -> None:
@@ -490,13 +565,14 @@ def test_if_block_returns_else_branch_for_falsy_condition() -> None:
     result = resolve_template(
         resource,
         {
+            "resourceType": "Resource",
             "result": {
                 "{% if key != 'value' %}": {"nested": "{{ 'true' + key }}"},
                 "{% else %}": {"nested": "{{ 'false' + key }}"},
             },
         },
     )
-    assert result == {"result": {"nested": "falsevalue"}}
+    assert result == {"resourceType": "Resource", "result": {"nested": "falsevalue"}}
 
 
 def test_if_block_removes_undefined_keys_for_falsy_condition_without_else_branch() -> None:
@@ -506,12 +582,13 @@ def test_if_block_removes_undefined_keys_for_falsy_condition_without_else_branch
     result = resolve_template(
         resource,
         {
+            "resourceType": "Resource",
             "result": {
                 "{% if key != 'value' %}": {"nested": "{{ 'true' + key }}"},
             },
         },
     )
-    assert result is None
+    assert result == {"resourceType": "Resource"}
 
 
 def test_if_block_returns_null_for_falsy_condition_with_nullable_else_branch() -> None:
@@ -521,13 +598,14 @@ def test_if_block_returns_null_for_falsy_condition_with_nullable_else_branch() -
     result = resolve_template(
         resource,
         {
+            "resourceType": "Resource",
             "result": {
                 "{% if key != 'value' %}": {"nested": "{{ 'true' + key }}"},
                 "{% else %}": "{{+ {} +}}",
             },
         },
     )
-    assert result == {"result": None}
+    assert result == {"resourceType": "Resource", "result": None}
 
 
 def test_if_block_returns_if_branch_for_nested_if() -> None:
@@ -537,6 +615,7 @@ def test_if_block_returns_if_branch_for_nested_if() -> None:
     result = resolve_template(
         resource,
         {
+            "resourceType": "Resource",
             "result": {
                 "{% if key = 'value' %}": {
                     "{% if key = 'value' %}": "value",
@@ -544,7 +623,7 @@ def test_if_block_returns_if_branch_for_nested_if() -> None:
             },
         },
     )
-    assert result == {"result": "value"}
+    assert result == {"resourceType": "Resource", "result": "value"}
 
 
 def test_if_block_returns_else_branch_for_nested_else() -> None:
@@ -554,6 +633,7 @@ def test_if_block_returns_else_branch_for_nested_else() -> None:
     result = resolve_template(
         resource,
         {
+            "resourceType": "Resource",
             "result": {
                 "{% if key != 'value' %}": None,
                 "{% else %}": {
@@ -563,7 +643,7 @@ def test_if_block_returns_else_branch_for_nested_else() -> None:
             },
         },
     )
-    assert result == {"result": "value"}
+    assert result == {"resourceType": "Resource", "result": "value"}
 
 
 def test_if_block_implicitly_merges_with_null_returned() -> None:
@@ -573,13 +653,14 @@ def test_if_block_implicitly_merges_with_null_returned() -> None:
     result = resolve_template(
         resource,
         {
+            "resourceType": "Resource",
             "result": {
                 "myKey": 1,
                 "{% if key = 'value' %}": None,
             },
         },
     )
-    assert result == {"result": {"myKey": 1}}
+    assert result == {"resourceType": "Resource", "result": {"myKey": 1}}
 
 
 def test_if_block_implicitly_merges_with_object_returned_for_truthy_condition() -> None:
@@ -589,13 +670,14 @@ def test_if_block_implicitly_merges_with_object_returned_for_truthy_condition() 
     result = resolve_template(
         resource,
         {
+            "resourceType": "Resource",
             "result": {
                 "myKey": 1,
                 "{% if key = 'value' %}": {"anotherKey": 2},
             },
         },
     )
-    assert result == {"result": {"myKey": 1, "anotherKey": 2}}
+    assert result == {"resourceType": "Resource", "result": {"myKey": 1, "anotherKey": 2}}
 
 
 def test_if_block_implicitly_merges_with_object_returned_for_falsy_condition() -> None:
@@ -605,6 +687,7 @@ def test_if_block_implicitly_merges_with_object_returned_for_falsy_condition() -
     result = resolve_template(
         resource,
         {
+            "resourceType": "Resource",
             "result": {
                 "myKey": 1,
                 "{% if key != 'value' %}": {"anotherKey": 2},
@@ -612,7 +695,7 @@ def test_if_block_implicitly_merges_with_object_returned_for_falsy_condition() -
             },
         },
     )
-    assert result == {"result": {"myKey": 1, "anotherKey": 3}}
+    assert result == {"resourceType": "Resource", "result": {"myKey": 1, "anotherKey": 3}}
 
 
 def test_if_block_fails_on_implicit_merge_with_non_object_returned_from_if_branch() -> None:
@@ -623,6 +706,7 @@ def test_if_block_fails_on_implicit_merge_with_non_object_returned_from_if_branc
         resolve_template(
             resource,
             {
+                "resourceType": "Resource",
                 "result": {
                     "myKey": 1,
                     "{% if key = 'value' %}": [{"key1": True}],
@@ -639,6 +723,7 @@ def test_if_block_fails_on_implicit_merge_with_non_object_returned_from_else_bra
         resolve_template(
             resource,
             {
+                "resourceType": "Resource",
                 "result": {
                     "myKey": 1,
                     "{% if key != 'value' %}": {},
@@ -656,6 +741,7 @@ def test_if_block_fails_on_multiple_if_blocks() -> None:
         resolve_template(
             resource,
             {
+                "resourceType": "Resource",
                 "result": {
                     "myKey": 1,
                     "{% if key != 'value' %}": {},
@@ -673,6 +759,7 @@ def test_if_block_fails_on_multiple_else_blocks() -> None:
         resolve_template(
             resource,
             {
+                "resourceType": "Resource",
                 "result": {
                     "myKey": 1,
                     "{% if key != 'value' %}": {},
@@ -691,6 +778,7 @@ def test_if_block_fails_on_else_block_without_if_block() -> None:
         resolve_template(
             resource,
             {
+                "resourceType": "Resource",
                 "result": {
                     "myKey": 1,
                     "{% else %}": {},
@@ -706,11 +794,14 @@ def test_merge_block_implicitly_merges_into_the_node() -> None:
     result = resolve_template(
         resource,
         {
-            "b": 1,
-            "{% merge %}": {"a": 1},
+            "resourceType": "Resource",
+            "result": {
+                "b": 1,
+                "{% merge %}": {"a": 1},
+            },
         },
     )
-    assert result == {"b": 1, "a": 1}
+    assert result == {"resourceType": "Resource", "result": {"b": 1, "a": 1}}
 
 
 def test_merge_block_merges_multiple_blocks_within_order() -> None:
@@ -720,10 +811,13 @@ def test_merge_block_merges_multiple_blocks_within_order() -> None:
     result = resolve_template(
         resource,
         {
-            "{% merge %}": [{"a": 1}, {"b": 2}, {"a": 3}],
+            "resourceType": "Resource",
+            "result": {
+                "{% merge %}": [{"a": 1}, {"b": 2}, {"a": 3}],
+            },
         },
     )
-    assert result == {"a": 3, "b": 2}
+    assert result == {"resourceType": "Resource", "result": {"a": 3, "b": 2}}
 
 
 def test_merge_block_merges_multiple_blocks_containing_nulls() -> None:
@@ -733,10 +827,13 @@ def test_merge_block_merges_multiple_blocks_containing_nulls() -> None:
     result = resolve_template(
         resource,
         {
-            "{% merge %}": [{"a": 1}, None, {"b": 2}],
+            "resourceType": "Resource",
+            "result": {
+                "{% merge %}": [{"a": 1}, None, {"b": 2}],
+            },
         },
     )
-    assert result == {"a": 1, "b": 2}
+    assert result == {"resourceType": "Resource", "result": {"a": 1, "b": 2}}
 
 
 def test_merge_block_merges_multiple_blocks_containing_undefined() -> None:
@@ -746,10 +843,13 @@ def test_merge_block_merges_multiple_blocks_containing_undefined() -> None:
     result = resolve_template(
         resource,
         {
-            "{% merge %}": [{"a": 1}, undefined, {"b": 2}],
+            "resourceType": "Resource",
+            "result": {
+                "{% merge %}": [{"a": 1}, undefined, {"b": 2}],
+            },
         },
     )
-    assert result == {"a": 1, "b": 2}
+    assert result == {"resourceType": "Resource", "result": {"a": 1, "b": 2}}
 
 
 def test_merge_block_fails_on_merge_with_non_object() -> None:
@@ -760,20 +860,9 @@ def test_merge_block_fails_on_merge_with_non_object() -> None:
         resolve_template(
             resource,
             {
-                "{% merge %}": [1, 2],
+                "resourceType": "Resource",
+                "result": {
+                    "{% merge %}": [1, 2],
+                },
             },
         )
-
-
-@pytest.mark.skip(reason="https://github.com/beda-software/FHIRPathMappingLanguage/issues/30")
-def test_null_values_are_not_removed_from_array() -> None:
-    resource_with_empty_array_nullable = {
-        "root": {"resourceType": "Example", "list": [None, {"nested": None}, None]},
-    }
-
-    result = resolve_template(
-        resource_with_empty_array_nullable,
-        {"root": "{{ %Resource.root }}"},
-        {"Resource": resource_with_empty_array_nullable},
-    )
-    assert result == {"root": {"resourceType": "Example", "list": [None, {"nested": None}]}}

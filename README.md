@@ -23,7 +23,7 @@ Finally, data DSL should be LLM-friendly and there should be an easy way to gene
 ChatGPT works pretty well with JSON and FHIRPath. So, you can just copy and paste the specification into ChatGPT and try to generate mappers.
 
 
-## Specification
+## Quick overview
 
 The FHIRPath mapping language is a data DSL designed to convert data from QuestionnaireResponse (and not only) to any FHIR Resource.
 
@@ -195,11 +195,30 @@ The final mapper will look like this:
 }
 ```
 
-### Accessing array result of expression
+## Specification
+
+### Accessing the first result of the expression
 
 From the example above, it's clearly seen that the expression inside `{{ }}` always evaluated as the first element or null.
 
-There's a special syntax for accessing the whole array - `{[ expression ]}`.
+For example,
+
+```json
+{
+    "resourceType": "Patient",
+    "name": [
+        {
+            "given": ["{[ QuestionnaireResponse.repeat(item).where(linkId='1').answer.value ]}"]
+        }
+    ]
+}
+```
+
+In this example, the result of the evaluation of the expression will be always the first element of the array.
+
+### Accessing the array result of the expression
+
+In order to use the array result, there's a special syntax - `{[ expression ]}`.
 
 For example,
 
@@ -214,19 +233,25 @@ For example,
 }
 ```
 
-In this example, the result of the evaluation of the expression will be always an array (empty or with results).
+In this example, the result of the expression evaluation will always be an array if the expression returns not empty array.
 
+### Empty arrays, objects and nulls removal
 
-### Null key removal
+If an expression resolves to an empty set `{}`, the value will be removed from the array and object.
+Moreover, empty arrays and objects also will be removed.
 
-If an expression resolves to an empty set `{}`, the key will be removed from the object.
-
-For example, if the gender field is missing in the QuestionnaireResponse from the example above:
+For example,
 
 ```json
 {
     "resourceType": "Patient",
-    "gender": "{{ QuestionnaireResponse.repeat(item).where(linkId='4.1').answer.value.code }}"
+    "name": [
+        {
+            "given": [
+                "{{ QuestionnaireResponse.repeat(item).where(linkId='1').answer.value.string }}"
+            ]
+        }
+    ]
 }
 ```
 
@@ -238,11 +263,20 @@ this template will be mapped into:
 }
 ```
 
-### Null key retention 
+**Explanation:**
+
+The expression `"{{ QuestionnaireResponse.repeat(item).where(linkId='1').answer.value.string }}"` resolves to null,
+which is then removed from the `given` array. Since `given` becomes null after removal, it gets removed from the object.
+The resulting empty object is then replaced with null, which is removed from the `name` array.
+Finally, the empty `name` array is replaced with null, causing the entire `name` key to be removed from the final result.
+
+
+### Nulls retention 
 
 **Note:** This feature is not mature enough and might change in the future.
 
 To preserve the null value in the final result, use `{{+` and `+}}` instead of `{{` and `}}`:
+The null value will be also preserved in the array, it might be useful for primitive extensions.
 
 ```json
 {
@@ -262,9 +296,9 @@ The result will be:
 
 **Note:** This feature is not mature enough and might change in the future.
 
-### Automatic array flattening and null removal
+### Automatic array flattening
 
-In FHIR resources, arrays of arrays and arrays of nulls are invalid constructions. To simplify writing mappers, there is automatic array flattening.
+In FHIR resources, arrays of arrays are invalid constructions. To simplify writing mappers, there is automatic array flattening.
 
 For example:
 
@@ -272,17 +306,14 @@ For example:
 {
     "list": [
         [
-            1, 2, null, 3
+            1, 2, 3
         ],
-        null,
         [
-            4, 5, 6, null
+            4, 5, 6
         ]  
     ]
 }
 ```
-
-will be mapped into:
 
 ```json
 {
@@ -292,7 +323,7 @@ will be mapped into:
 }
 ```
 
-This is especially useful if there is conditional and iteration logic used.
+Note that since empty arrays, objects, and null values are automatically removed, any null elements created during expression evaluation in arrays will be automatically removed during flattening. This behavior is particularly beneficial when using conditional and iteration logic.
 
 ### String concatenation
 
