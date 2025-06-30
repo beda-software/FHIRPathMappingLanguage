@@ -1,3 +1,7 @@
+## 0.2.0
+
+- Clear empty array and objects #17 (@dmitryashutov)
+
 ## 0.1.3
 
 - Update documentation
