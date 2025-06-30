@@ -1,0 +1,12 @@
+name: github-actions
+on:
+  push:
+    branches:
+      - "*"
+    tags-ignore:
+      - "v*.*.*"
+jobs:
+  test-fpml-ts:
+    uses: ./.github/workflows/test-ts.yml 
+  test-fpml-py:
+    uses: ./.github/workflows/test-python.yml
