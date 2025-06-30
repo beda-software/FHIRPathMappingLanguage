@@ -97,7 +97,7 @@ def test_transformation_for_array_of_objects_returns_original_array() -> None:
 
 
 def test_transformation_for_null_returns_null() -> None:
-    assert resolve_template({}, None)  == undefined
+    assert resolve_template({}, None) is None
 
 
 def test_transformation_for_constant_string_returns_constant_string() -> None:
@@ -159,7 +159,7 @@ def test_transformation_for_empty_array_nullable_template_expression_returns_nul
             resource,
             "/Patient/{{+ list.where($this = 0) +}}/_history/{{ list.last() }}",
         )
-        == undefined
+        is None
     )
 
 
