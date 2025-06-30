@@ -196,7 +196,9 @@ def test_transformation_returns_resolved_template_for_template_expression() -> N
     ) == {"resourceType": "Resource", "result": "/1/2/3"}
 
 
-def test_transformation_removes_undefined_values_for_undefined_values_in_complex_expression() -> None:
+def test_transformation_removes_undefined_values_for_undefined_values_in_complex_expression() -> (
+    None
+):
     resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
     assert resolve_template(
         resource,
@@ -500,9 +502,9 @@ def test_for_block_resolve_template_fails_with_other_keys() -> None:
     template = {
         "resourceType": "Resource",
         "result": {
-        "userKey": 1,
-        "{% for key in %list %}": "{{ %key }}",
-        }
+            "userKey": 1,
+            "{% for key in %list %}": "{{ %key }}",
+        },
     }
     with pytest.raises(FPMLValidationError):
         resolve_template(context, template)
