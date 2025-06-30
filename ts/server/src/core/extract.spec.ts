@@ -3,6 +3,38 @@ import { FPMLValidationError, resolveTemplate } from './extract';
 describe('Transformation', () => {
     const resource = { list: [{ key: 1 }, { key: 2 }, { key: 3 }] } as any;
 
+    test.skip('null values are not removed', () => {
+        const resourceWithEmptyArrayNullable = {
+            root: { resourceType: 'Example', list: [null, { nested: null }, null] },
+        } as any;
+        expect(
+            resolveTemplate(
+                resourceWithEmptyArrayNullable,
+                { root: '{{ %Resource.root }}' },
+                { Resource: resourceWithEmptyArrayNullable },
+                null,
+                null,
+                true,
+            ),
+        ).toStrictEqual({ root: { resourceType: 'Example', list: [null, { nested: null }] } });
+    });
+
+    test('undefined value are removed', () => {
+        const resourceWithEmptyArray = {
+            root: { resourceType: 'Example', list: [undefined, { nested: undefined }] },
+        } as any;
+        expect(
+            resolveTemplate(
+                resourceWithEmptyArray,
+                { root: '{{ %Resource.root }}' },
+                { Resource: resourceWithEmptyArray },
+                null,
+                null,
+                true,
+            ),
+        ).toStrictEqual({ root: { resourceType: 'Example' } });
+    });
+
     test('fails on accessing props of resource in strict mode', () => {
         expect(() =>
             resolveTemplate(resource, { key: '{{ list.key }}' }, {}, null, null, true),
@@ -61,12 +93,12 @@ describe('Transformation', () => {
         ).toStrictEqual({ key: 1 });
     });
 
-    test('for empty object return empty object', () => {
-        expect(resolveTemplate(resource, {})).toStrictEqual({});
+    test('for empty object return undefined', () => {
+        expect(resolveTemplate(resource, {})).toBeUndefined();
     });
 
-    test('for empty array return empty array', () => {
-        expect(resolveTemplate(resource, [])).toStrictEqual([]);
+    test('for empty array return undefined', () => {
+        expect(resolveTemplate(resource, [])).toBeUndefined();
     });
 
     test('for array of arrays returns flattened array', () => {
@@ -92,8 +124,12 @@ describe('Transformation', () => {
         expect(resolveTemplate(resource, { key: null })).toStrictEqual({ key: null });
     });
 
-    test('for object with undefined keys returns undefined keys', () => {
-        expect(resolveTemplate(resource, { key: undefined })).toStrictEqual({ key: undefined });
+    test('for object with undefined keys returns undefined', () => {
+        expect(resolveTemplate(resource, { key: undefined })).toBeUndefined();
+    });
+
+    test('for object with undefined keys returns only defined keys', () => {
+        expect(resolveTemplate(resource, { key: undefined, key2: 1 })).toStrictEqual({ key2: 1 });
     });
 
     test('for object with non-null keys returns non-null keys', () => {
@@ -230,13 +266,18 @@ describe('Assign block', () => {
 
     test('works with undefined intermediate values', () => {
         expect(
-            resolveTemplate(resource, {
-                '{% assign %}': [{ varA: '{{ {} }}' }, { varB: '{{ %varA }}' }],
-                valueA: '{{ %varB }}',
-            }),
-        ).toStrictEqual({
-            valueA: undefined,
-        });
+            resolveTemplate(
+                resource,
+                {
+                    '{% assign %}': [{ varA: '{{ {} }}' }, { varB: '{{ %varA }}' }],
+                    valueA: '{{ %varB }}',
+                },
+                null,
+                null,
+                null,
+                true,
+            ),
+        ).toBeUndefined();
     });
 
     test('works with multiple vars as array of objects', () => {
@@ -478,9 +519,7 @@ describe('If block', () => {
                     "{% if key != 'value' %}": { nested: "{{ 'true' + key }}" },
                 },
             }),
-        ).toStrictEqual({
-            result: undefined,
-        });
+        ).toBeUndefined();
     });
 
     test('returns null for falsy condition with nullable else branch', () => {
@@ -600,7 +639,7 @@ describe('If block', () => {
             resolveTemplate(resource, {
                 result: {
                     myKey: 1,
-                    "{% if key = 'value' %}": [],
+                    "{% if key = 'value' %}": [{ key1: true }],
                 },
             }),
         ).toThrow(FPMLValidationError);
@@ -612,7 +651,7 @@ describe('If block', () => {
                 result: {
                     myKey: 1,
                     "{% if key != 'value' %}": {},
-                    '{% else %}': [],
+                    '{% else %}': [{ key1: true }],
                 },
             }),
         ).toThrow(FPMLValidationError);

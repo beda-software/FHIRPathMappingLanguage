@@ -106,7 +106,7 @@ function resolveTemplateRecur(
 
             return { node, context };
         },
-    )[rootNodeKey];
+    )?.[rootNodeKey];
 }
 
 function processTemplateString(
@@ -164,7 +164,6 @@ function processAssignBlock(
 ): { node: any; context: Context } {
     const extendedContext = { ...context };
     const keys = Object.keys(node);
-
     const assignRegExp = /{%\s*assign\s*%}/;
     const assignKey = keys.find((k) => k.match(assignRegExp));
     if (assignKey) {
@@ -177,8 +176,17 @@ function processAssignBlock(
                     );
                 }
 
-                Object.entries(
-                    resolveTemplateRecur(path, resource, obj, extendedContext, model, fpOptions),
+                return Object.entries(
+                    mapValues(obj, (objValue) =>
+                        resolveTemplateRecur(
+                            path,
+                            resource,
+                            objValue,
+                            extendedContext,
+                            model,
+                            fpOptions,
+                        ),
+                    ),
                 ).forEach(([key, value]) => {
                     extendedContext[key] = value;
                 });
@@ -191,13 +199,15 @@ function processAssignBlock(
                 );
             }
             Object.entries(
-                resolveTemplateRecur(
-                    path,
-                    resource,
-                    node[assignKey],
-                    extendedContext,
-                    model,
-                    fpOptions,
+                mapValues(node[assignKey], (objValue) =>
+                    resolveTemplateRecur(
+                        path,
+                        resource,
+                        objValue,
+                        extendedContext,
+                        model,
+                        fpOptions,
+                    ),
                 ),
             ).forEach(([key, value]) => {
                 extendedContext[key] = value;
@@ -398,19 +408,36 @@ type Transformer = (path: Path, node: any, context: Context) => { node: any; con
 function iterateObject(startPath: Path, obj: any, context: Context, transform: Transformer): any {
     if (Array.isArray(obj)) {
         // Arrays are flattened and null/undefined values are removed here
-        return obj
+        const cleanedArray = obj
             .flatMap((value, index) => {
                 const result = transform([...startPath, index], value, context);
 
-                return iterateObject([...startPath, index], result.node, result.context, transform);
+                const testResult = iterateObject(
+                    [...startPath, index],
+                    result.node,
+                    result.context,
+                    transform,
+                );
+                console.log(testResult);
+                return testResult;
             })
             .filter((x) => x !== null && x !== undefined);
+        return cleanedArray.length ? cleanedArray : undefined;
     } else if (isPlainObject(obj)) {
-        return mapValues(obj, (value, key) => {
+        const objResult = mapValues(obj, (value, key) => {
             const result = transform([...startPath, key], value, context);
 
             return iterateObject([...startPath, key], result.node, result.context, transform);
         });
+
+        if (isPlainObject(objResult)) {
+            const cleanedObject = Object.entries(objResult).filter(([, value]) => value !== undefined);
+            if (!cleanedObject.length) {
+                return undefined;
+            }
+            return Object.fromEntries(cleanedObject);
+        }
+        return objResult;
     }
 
     return transform(startPath, obj, context).node;
