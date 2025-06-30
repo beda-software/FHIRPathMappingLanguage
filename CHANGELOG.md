@@ -1,6 +1,7 @@
 ## 0.2.0
 
 - Clear empty array and objects #17 (@dmitryashutov)
+- Preserve null in arrays #30 (@ruscoder)
 
 ## 0.1.3
 

@@ -118,7 +118,7 @@ def process_node(
 
 def iterate_node(start_path: Path, node: Node, context: Context, transform: Transformer) -> Node:
     if isinstance(node, list):
-        # Arrays are flattened and null/undefined values are removed here
+        # Arrays are flattened and undefined values are removed here
         cleaned_array = flatten(
             [
                 value
@@ -130,7 +130,7 @@ def iterate_node(start_path: Path, node: Node, context: Context, transform: Tran
                     )
                     for index, value in enumerate(node)
                 ]
-                if value is not None and value is not undefined
+                if value is not undefined
             ]
         )
 

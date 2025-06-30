@@ -111,14 +111,18 @@ describe('Transformation', () => {
         ).toStrictEqual([1, 2, 3, 4, 5, 6]);
     });
 
-    test('for array with null values returns compacted array', () => {
-        expect(resolveTemplate(resource, [[1, null, 2, null, 3]])).toStrictEqual([1, 2, 3]);
+    test('preserves null values in array', () => {
+        expect(resolveTemplate(resource, [[1, null, 2, null, 3]])).toStrictEqual([
+            1,
+            null,
+            2,
+            null,
+            3,
+        ]);
     });
 
-    test('for array with undefined values returns compacted array', () => {
-        expect(resolveTemplate(resource, [[1, undefined, 2, undefined, 3]])).toStrictEqual([
-            1, 2, 3,
-        ]);
+    test('removes undefined values from array', () => {
+        expect(resolveTemplate(resource, [[1, undefined, 2, undefined, 3]])).toStrictEqual([1, 2, 3]);
     });
 
     test('for object with null keys returns null keys', () => {

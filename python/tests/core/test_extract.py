@@ -65,12 +65,12 @@ def test_transformation_for_empty_array_return_empty_array() -> None:
     assert resolve_template({}, []) is None
 
 
-def test_transformation_for_array_of_arrays_returns_flattened_array() -> None:
+def test_transformation_preserve_null_values_from_array() -> None:
     assert resolve_template({}, [[1, 2, 3], [4, 5, 6]]) == [1, 2, 3, 4, 5, 6]
 
 
-def test_transformation_for_array_with_null_values_returns_compacted_array() -> None:
-    assert resolve_template({}, [[1, None, 2, None, 3]]) == [1, 2, 3]
+def test_transformation_remove_undefined_values_from_array() -> None:
+    assert resolve_template({}, [[1, None, 2, None, 3]]) == [1, None, 2, None, 3]
 
 
 def test_transformation_for_array_with_undefined_values_returns_compacted_array() -> None:
@@ -81,7 +81,7 @@ def test_transformation_for_object_with_null_keys_returns_null_keys() -> None:
     assert resolve_template({}, {"key": None}) == {"key": None}
 
 
-def test_transformation_for_object_with_undefined_keys_clears_undefined_keys() -> None:
+def test_transformation_for_object_with_undefined_keys_removes_undefined_keys() -> None:
     assert resolve_template({}, {"key": undefined}) is None
 
 
@@ -121,7 +121,7 @@ def test_transformation_for_non_empty_array_expression_return_first_element() ->
     assert resolve_template(resource, "{{ list }}") == {"key": 1}
 
 
-def test_transformation_for_empty_array_expression_clears_undefined_keys() -> None:
+def test_transformation_for_empty_array_expression_removes_undefined_keys() -> None:
     resource: Resource = {"list": []}
     assert resolve_template(resource, {"result": "{{ list.where($this = 0) }}"}) is None
 
@@ -499,7 +499,7 @@ def test_if_block_returns_else_branch_for_falsy_condition() -> None:
     assert result == {"result": {"nested": "falsevalue"}}
 
 
-def test_if_block_clears_undefined_keys_for_falsy_condition_without_else_branch() -> None:
+def test_if_block_removes_undefined_keys_for_falsy_condition_without_else_branch() -> None:
     resource: Resource = {
         "key": "value",
     }

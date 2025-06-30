@@ -410,14 +410,14 @@ type Transformer = (path: Path, node: any, context: Context) => { node: any; con
 
 function iterateObject(startPath: Path, obj: any, context: Context, transform: Transformer): any {
     if (Array.isArray(obj)) {
-        // Arrays are flattened and null/undefined values are removed here
+        // Arrays are flattened and undefined values are removed here
         const cleanedArray = obj
             .flatMap((value, index) => {
                 const result = transform([...startPath, index], value, context);
 
                 return iterateObject([...startPath, index], result.node, result.context, transform);
             })
-            .filter((x) => x !== null && x !== undefined);
+            .filter((x) => x !== undefined);
         return cleanedArray.length ? cleanedArray : undefined;
     } else if (isPlainObject(obj)) {
         const objResult = mapValues(obj, (value, key) => {
