@@ -58,11 +58,11 @@ def test_transformation_works_on_accessing_props_of_implicit_context_in_strict_m
 
 
 def test_transformation_for_empty_object_return_empty_object() -> None:
-    assert resolve_template({}, {}) == {}
+    assert resolve_template({}, {}) is None
 
 
 def test_transformation_for_empty_array_return_empty_array() -> None:
-    assert resolve_template({}, []) == []
+    assert resolve_template({}, []) is None
 
 
 def test_transformation_for_array_of_arrays_returns_flattened_array() -> None:
@@ -82,7 +82,7 @@ def test_transformation_for_object_with_null_keys_returns_null_keys() -> None:
 
 
 def test_transformation_for_object_with_undefined_keys_clears_undefined_keys() -> None:
-    assert resolve_template({}, {"key": undefined}) == {}
+    assert resolve_template({}, {"key": undefined}) is None
 
 
 def test_transformation_for_object_with_non_null_keys_returns_non_null_keys() -> None:
@@ -123,7 +123,7 @@ def test_transformation_for_non_empty_array_expression_return_first_element() ->
 
 def test_transformation_for_empty_array_expression_clears_undefined_keys() -> None:
     resource: Resource = {"list": []}
-    assert resolve_template(resource, {"result": "{{ list.where($this = 0) }}"}) == {}
+    assert resolve_template(resource, {"result": "{{ list.where($this = 0) }}"})is None
 
 
 def test_transformation_for_empty_array_nullable_expression_returns_null() -> None:
@@ -141,23 +141,26 @@ def test_transformation_for_template_expression_returns_resolved_template() -> N
     )
 
 
-def test_transformation_for_empty_array_template_expression_clears_undefined_keys() -> None:
+def test_transformation_for_empty_array_template_expression_returns_undefined() -> None:
     resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
     assert (
         resolve_template(
             resource,
-            {"result": "/Patient/{{ list.where($this = 0) }}/_history/{{ list.last() }}"},
+            "/Patient/{{ list.where($this = 0) }}/_history/{{ list.last() }}",
         )
-        == {}
+        is None
     )
 
 
 def test_transformation_for_empty_array_nullable_template_expression_returns_null() -> None:
     resource: Resource = {"list": [{"key": 1}, {"key": 2}, {"key": 3}]}
-    assert resolve_template(
-        resource,
-        {"result": "/Patient/{{+ list.where($this = 0) +}}/_history/{{ list.last() }}"},
-    ) == {"result": None}
+    assert (
+        resolve_template(
+            resource,
+            "/Patient/{{+ list.where($this = 0) +}}/_history/{{ list.last() }}",
+        )
+        is None
+    )
 
 
 def test_transformation_for_multiline_template_works_properly() -> None:
@@ -234,7 +237,7 @@ def test_assign_block_with_undefined_intermediate_values() -> None:
                 "valueA": "{{ %varB }}",
             },
         )
-        == {}
+        is None
     )
 
 
@@ -508,7 +511,7 @@ def test_if_block_clears_undefined_keys_for_falsy_condition_without_else_branch(
             },
         },
     )
-    assert result == {}
+    assert result is None
 
 
 def test_if_block_returns_null_for_falsy_condition_with_nullable_else_branch() -> None:
@@ -622,7 +625,7 @@ def test_if_block_fails_on_implicit_merge_with_non_object_returned_from_if_branc
             {
                 "result": {
                     "myKey": 1,
-                    "{% if key = 'value' %}": [],
+                    "{% if key = 'value' %}": [{"key1": True}],
                 },
             },
         )
@@ -639,7 +642,7 @@ def test_if_block_fails_on_implicit_merge_with_non_object_returned_from_else_bra
                 "result": {
                     "myKey": 1,
                     "{% if key != 'value' %}": {},
-                    "{% else %}": [],
+                    "{% else %}": [{"key1": True}],
                 },
             },
         )

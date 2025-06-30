@@ -42,7 +42,7 @@ def resolve_template(
         context (Optional[Context], optional): Additional context data. Defaults to None.
         fp_options (Optional[FPOptions], optional): Options for controlling FHIRPath evaluation. Defaults to None.
         strict (bool, optional): Whether to enforce strict mode. Defaults to False.
-            See more details on 
+            See more details on
             [strict mode](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main?tab=readme-ov-file#strict-mode).
 
     Returns:
@@ -72,12 +72,16 @@ def resolve_template_recur(
     context: Context,
     fp_options: Optional[FPOptions] = None,
 ) -> Any:
-    return iterate_node(
+    result = iterate_node(
         start_path,
         {root_node_key: template},
         context or {},
         lambda path, node, context: process_node(path, resource, node, context, fp_options),
-    ).get(root_node_key, None)
+    )
+    if isinstance(result, dict):
+        return result.get(root_node_key, None)
+
+    return None
 
 
 def process_node(
@@ -113,7 +117,7 @@ def process_node(
 def iterate_node(start_path: Path, node: Node, context: Context, transform: Transformer) -> Node:
     if isinstance(node, list):
         # Arrays are flattened and null/undefined values are removed here
-        return flatten(
+        cleaned_array = flatten(
             [
                 value
                 for value in [
@@ -127,9 +131,11 @@ def iterate_node(start_path: Path, node: Node, context: Context, transform: Tran
                 if value is not None and value is not undefined
             ]
         )
+
+        return cleaned_array or undefined
     if isinstance(node, dict):
         # undefined values are removed from dicts, but nulls are preserved
-        return {
+        cleaned_object = {
             key: value
             for key, value in {
                 key: iterate_node(
@@ -141,6 +147,11 @@ def iterate_node(start_path: Path, node: Node, context: Context, transform: Tran
             }.items()
             if value is not undefined
         }
+
+        if len(cleaned_object) == 0:
+            return undefined
+
+        return cleaned_object
 
     return transform(start_path, node, context)[0]
 
@@ -354,18 +365,20 @@ def process_assign_block(
                     raise FPMLValidationError(
                         "Assign block must accept only one key per object", path
                     )
-                result = resolve_template_recur(path, resource, obj, extended_context, fp_options)
+                result = {
+                    key: resolve_template_recur(
+                        path, resource, obj_value, extended_context, fp_options
+                    )
+                    for key, obj_value in obj.items()
+                }
                 key = next(iter(obj.keys()))
                 extended_context.update({key: result.get(key, None)})
         elif isinstance(node[assign_key], dict) and len(node[assign_key]) == 1:
             obj = node[assign_key]
-            result = resolve_template_recur(
-                path,
-                resource,
-                obj,
-                extended_context,
-                fp_options,
-            )
+            result = {
+                key: resolve_template_recur(path, resource, obj_value, extended_context, fp_options)
+                for key, obj_value in obj.items()
+            }
             key = next(iter(obj.keys()))
             extended_context.update({key: result.get(key, None)})
         else:
