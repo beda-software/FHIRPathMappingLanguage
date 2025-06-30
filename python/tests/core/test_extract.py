@@ -763,3 +763,17 @@ def test_merge_block_fails_on_merge_with_non_object() -> None:
                 "{% merge %}": [1, 2],
             },
         )
+
+
+@pytest.mark.skip(reason="https://github.com/beda-software/FHIRPathMappingLanguage/issues/30")
+def test_null_values_are_not_removed_from_array() -> None:
+    resource_with_empty_array_nullable = {
+        "root": {"resourceType": "Example", "list": [None, {"nested": None}, None]},
+    }
+
+    result = resolve_template(
+        resource_with_empty_array_nullable,
+        {"root": "{{ %Resource.root }}"},
+        {"Resource": resource_with_empty_array_nullable},
+    )
+    assert result == {"root": {"resourceType": "Example", "list": [None, {"nested": None}]}}

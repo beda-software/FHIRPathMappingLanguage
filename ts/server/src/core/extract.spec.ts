@@ -3,6 +3,7 @@ import { FPMLValidationError, resolveTemplate } from './extract';
 describe('Transformation', () => {
     const resource = { list: [{ key: 1 }, { key: 2 }, { key: 3 }] } as any;
 
+    // https://github.com/beda-software/FHIRPathMappingLanguage/issues/30
     test.skip('null values are not removed', () => {
         const resourceWithEmptyArrayNullable = {
             root: { resourceType: 'Example', list: [null, { nested: null }, null] },
