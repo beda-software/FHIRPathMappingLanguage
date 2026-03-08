@@ -477,51 +477,6 @@ will be mapped into:
 }
 ```
 
-#### Implicit merge
-
-It also makes implicit merge, in case when `if`/`else` blocks return JSON objects, for example:
-
-```json
-{
-    "resourceType": "Patient",
-    "address": {
-        "type": "physical",
-        "{% if QuestionnaireResponse.repeat(item).where(linkId='country').answer.exists() %}": {
-            "country": "{{ QuestionnaireResponse.repeat(item).where(linkId='country').answer.value }}"
-        },
-        "{% else %}": {
-            "text": "Unknown"
-        }
-    }
-}
-```
-
-The final result will be either
-
-```json
-{
-    "resourceType": "Patient",
-    "address": {
-        "type": "physical",
-        "country": "US"
-    }
-}
-```
-
-or
-
-```json
-{
-    "resourceType": "Patient",
-    "address": {
-        "type": "physical",
-        "text": "Unknown"
-    }
-}
-```
-
-In this example, Patient address contains original `{"type": "physical"}` object and `country`/`text` is implicitly merged based on condition.
-
 ### Iteration logic
 
 To iterate over the array of values, here's a special construction:
