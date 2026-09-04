@@ -1,10 +1,9 @@
 import re
 from typing import Any, Optional, cast
 
-from fhirpathpy import evaluate  # type: ignore
-
 from fpml.core.guarded_resource import guarded_resource
 
+from .cache import compile_expression
 from .constants import root_node_key, undefined
 from .core_exceptions import FPMLValidationError
 from .core_types import (
@@ -395,10 +394,15 @@ def evaluate_expression(
     context: Context,
     fp_options: Optional[FPOptions] = None,
 ) -> list[Any]:
-    fp_options_copy = cast(dict, fp_options or {}).copy()
-    model = fp_options_copy.pop("model", None)
+    cache = (fp_options or {}).get("cache")
 
     try:
-        return evaluate(resource, expression, context, model, options=fp_options_copy)
+        compiled = (
+            cache.compile(expression, fp_options)
+            if cache
+            else compile_expression(expression, fp_options)
+        )
+
+        return compiled(resource, context)
     except Exception as exc:
         raise FPMLValidationError(f"Cannot evaluate '{expression}': {exc}", path) from exc

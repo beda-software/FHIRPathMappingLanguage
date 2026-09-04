@@ -1,6 +1,9 @@
-from typing import Any, Callable, Optional, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict, Union
 
 from typing_extensions import NotRequired
+
+if TYPE_CHECKING:
+    from .cache import ExpressionCache
 
 Resource = dict[str, Any]
 Node = Any
@@ -39,6 +42,9 @@ class FPOptions(TypedDict):
             A table of user-defined functions that
             can be used in FHIRPath expressions during template processing.
             See https://github.com/beda-software/fhirpath-py?tab=readme-ov-file#user-defined-functions
+        cache (Optional[ExpressionCache]):
+            A cache of compiled expressions, e.g. ExpressionCache(max_size=1024).
+            Expressions are compiled on every evaluation when it's not passed.
 
     See Also:
     FHIRPath py Documentation:
@@ -47,6 +53,7 @@ class FPOptions(TypedDict):
 
     model: NotRequired[Model]
     userInvocationTable: NotRequired[UserInvocationTable]
+    cache: NotRequired["ExpressionCache"]
 
 
 class MatcherResult(TypedDict):

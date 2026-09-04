@@ -1,3 +1,8 @@
+## 0.3.0
+
+- Add configurable LRU cache of compiled FHIRPath expressions instead of parsing them on every evaluation #37 (@ruscoder)
+- Add proper compilation for `answers()` in TS server #37 (@ruscoder)
+
 ## 0.2.0
 
 - Clear empty array and objects #17 (@dmitryashutov)

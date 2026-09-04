@@ -1,5 +1,6 @@
 import importlib.metadata
 
+from .core.cache import ExpressionCache
 from .core.core_exceptions import FPMLValidationError
 from .core.extract import resolve_template
 
@@ -9,4 +10,8 @@ __author__ = "beda.software"
 __license__ = "MIT"
 __copyright__ = "Copyright 2025 beda.software"
 
-__all__ = ["FPMLValidationError", "resolve_template"]
+__all__ = [
+    "ExpressionCache",
+    "FPMLValidationError",
+    "resolve_template",
+]
