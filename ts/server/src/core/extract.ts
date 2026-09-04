@@ -1,4 +1,4 @@
-import * as fhirpath from 'fhirpath';
+import { compileExpression, ExpressionCache } from './cache';
 
 type Resource = Record<string, any>;
 type Path = Array<string | number>;
@@ -9,6 +9,7 @@ const rootNodeKey = '__rootNode__';
 
 export interface FPOptions {
     userInvocationTable?: UserInvocationTable;
+    cache?: ExpressionCache;
 }
 
 export class FPMLValidationError extends Error {
@@ -464,14 +465,12 @@ export function evaluateExpression(
     options: FPOptions,
 ) {
     try {
-        return fhirpath.evaluate(
-            resource,
-            expression,
-            // fhirpath mutates context https://github.com/HL7/fhirpath.js/issues/155
-            { ...context },
-            model,
-            options,
-        );
+        const compiled = options?.cache
+            ? options.cache.compile(expression, model, options)
+            : compileExpression(expression, model, options);
+
+        // fhirpath mutates context https://github.com/HL7/fhirpath.js/issues/155
+        return compiled(resource, { ...context });
     } catch (exc) {
         throw new FPMLValidationError(`Can not evaluate '${expression}': ${exc}`, path);
     }

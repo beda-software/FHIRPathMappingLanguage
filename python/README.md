@@ -162,6 +162,31 @@ Output:
 {'resourceType': 'Patient', 'name': [{'text': 'Name'}]}
 ```
 
+### Caching compiled expressions
+
+Parsing FHIRPath expressions is expensive, so expressions can be compiled once and reused via
+`ExpressionCache` passed through `fp_options`. The cache size is the number of compiled expressions
+kept in memory, zero disables caching.
+
+Entries are keyed by the expression only, while compilation binds the model and the user-defined
+functions, so keep one long-living cache per `fp_options`.
+
+```python
+from fhirpathpy.models import models
+
+from fpml import ExpressionCache, resolve_template
+
+
+# 1024 long expressions take up to 100mb
+fp_options = {
+    "model": models["r4"],
+    "cache": ExpressionCache(max_size=1024),
+}
+
+for resource in resources:
+    resolve_template(resource, template, context, fp_options)
+```
+
 ### Handling validation errors
 
 ```python

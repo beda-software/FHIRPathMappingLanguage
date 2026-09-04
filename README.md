@@ -594,6 +594,12 @@ POST /r4/parse-template
 }
 ```
 
+#### Cache
+
+Expressions are compiled on every evaluation unless the `FPML_CACHE_SIZE` environment variable is set to the number of compiled expressions to keep, which speeds up repeated templates several times.
+
+A compiled expression retains its parsed AST, so the memory cost grows with the expression length: `1024` of them take about 25mb for short expressions and up to 250mb for 1kb ones. The limit applies per cache, and there's one cache per FHIR version.
+
 #### Strict mode
 
 There's a flag, called `strict` that is set to `false` by default. If it set to `true`, all accesses to the variables without the percent sign will be rejected and exception will be thrown.
@@ -678,6 +684,23 @@ result = resolve_template(
 ```
 
 
+
+#### Cache
+
+There's no cache by default, expressions are compiled on every evaluation. Pass an `ExpressionCache` through `fp_options` to reuse compiled expressions, see [details](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python/README.md#caching-compiled-expressions).
+
+Example:
+
+```python
+from fpml import ExpressionCache, resolve_template
+
+result = resolve_template(
+    resource,
+    template,
+    context,
+    fp_options={'cache': ExpressionCache(max_size=1024)}
+)
+```
 
 #### User-defined functions
 
