@@ -1,3 +1,7 @@
+import sys
+from collections.abc import Iterator
+from itertools import repeat
+from threading import Thread
 from typing import Any
 
 import pytest
@@ -39,6 +43,44 @@ def test_clear_drops_compiled_expressions() -> None:
 
     cache.clear()
     assert cache.compile("list.key", None) is not compiled
+
+
+def test_stays_consistent_when_shared_between_threads(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Stub the compilation, so that the cache bookkeeping is what threads contend over
+    monkeypatch.setattr(cache_module, "compile_expression", lambda expression, _: expression)
+    max_size = 2
+    cache = ExpressionCache(max_size=max_size)
+    errors: list[Exception] = []
+
+    def hammer(expressions: Iterator[str]) -> None:
+        for expression in expressions:
+            try:
+                cache.compile(expression, None)
+            except Exception as exc:
+                errors.append(exc)
+                return
+
+    threads = [
+        # Readers keep hitting one entry while churners evict it from under them
+        *[Thread(target=hammer, args=(repeat("hot", 20000),)) for _ in range(4)],
+        *[
+            Thread(target=hammer, args=((f"churn{index}-{n}" for n in range(20000)),))
+            for index in range(4)
+        ],
+    ]
+    switch_interval = sys.getswitchinterval()
+    # Preempt threads aggressively to widen the window between a lookup and its eviction
+    sys.setswitchinterval(1e-6)
+    try:
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+    finally:
+        sys.setswitchinterval(switch_interval)
+
+    assert errors == []
+    assert cache.size == max_size
 
 
 def test_resolve_template_compiles_repeated_expression_once(
