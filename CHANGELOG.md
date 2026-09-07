@@ -1,3 +1,7 @@
+## 0.3.1
+
+- Make `ExpressionCache` thread-safe, it raised a spurious `FPMLValidationError` when an entry was evicted mid-lookup
+
 ## 0.3.0
 
 - Add configurable LRU cache of compiled FHIRPath expressions instead of parsing them on every evaluation #37 (@ruscoder)

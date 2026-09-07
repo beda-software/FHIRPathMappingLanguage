@@ -169,7 +169,7 @@ Parsing FHIRPath expressions is expensive, so expressions can be compiled once a
 kept in memory, zero disables caching.
 
 Entries are keyed by the expression only, while compilation binds the model and the user-defined
-functions, so keep one long-living cache per `fp_options`.
+functions, so keep one long-living cache per `fp_options`. A cache is safe to share between threads.
 
 ```python
 from fhirpathpy.models import models
