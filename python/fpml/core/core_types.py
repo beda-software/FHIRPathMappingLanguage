@@ -1,9 +1,6 @@
-from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict, Union
+from typing import Any, Callable, Optional, TypedDict, Union
 
 from typing_extensions import NotRequired
-
-if TYPE_CHECKING:
-    from .cache import ExpressionCache
 
 Resource = dict[str, Any]
 Node = Any
@@ -30,30 +27,7 @@ class UserFnDefinition(TypedDict):
 UserInvocationTable = dict[str, UserFnDefinition]
 
 
-class FPOptions(TypedDict):
-    """
-    Optional parameters for controlling FHIRPath evaluation.
-
-    Attributes:
-        model (Optional[Model]):
-            An optional "model" data object specific to a domain, e.g. R4.
-            See https://github.com/beda-software/fhirpath-py?tab=readme-ov-file#using-data-models
-        userInvocationTable (Optional[UserInvocationTable]):
-            A table of user-defined functions that
-            can be used in FHIRPath expressions during template processing.
-            See https://github.com/beda-software/fhirpath-py?tab=readme-ov-file#user-defined-functions
-        cache (Optional[ExpressionCache]):
-            A cache of compiled expressions, e.g. ExpressionCache(max_size=1024).
-            Expressions are compiled on every evaluation when it's not passed.
-
-    See Also:
-    FHIRPath py Documentation:
-    https://github.com/beda-software/fhirpath-py?tab=readme-ov-file#fhirpathpy
-    """
-
-    model: NotRequired[Model]
-    userInvocationTable: NotRequired[UserInvocationTable]
-    cache: NotRequired["ExpressionCache"]
+Evaluate = Callable[[Resource, str, Context], list[Any]]
 
 
 class MatcherResult(TypedDict):
@@ -66,7 +40,7 @@ Matcher = Callable[
         Resource,
         DictNode,
         Context,
-        Optional[FPOptions],
+        Evaluate,
     ],
     Optional[MatcherResult],
 ]

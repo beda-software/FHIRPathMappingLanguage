@@ -685,30 +685,46 @@ result = resolve_template(
 
 
 
-#### Cache
+#### Custom evaluator
 
-There's no cache by default, expressions are compiled on every evaluation. Pass an `ExpressionCache` through `fp_options` to reuse compiled expressions, see [details](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python/README.md#caching-compiled-expressions).
+Expressions are compiled on every evaluation by default. Pass an `evaluate` function to reuse compiled expressions, cached the way your application needs, see [details](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main/python/README.md#using-a-custom-evaluator).
+
+An evaluator takes a resource, an expression and a context, and returns the list of results. It is
+responsible for the model and the user-defined functions itself.
 
 Example:
 
 ```python
-from fpml import ExpressionCache, resolve_template
+from functools import lru_cache
 
-result = resolve_template(
-    resource,
-    template,
-    context,
-    fp_options={'cache': ExpressionCache(max_size=1024)}
-)
+from fhirpathpy import compile
+from fhirpathpy.models import models
+
+from fpml import resolve_template
+
+
+@lru_cache(maxsize=2**14)
+def cached_compile(expression, model_name):
+    return compile(expression, models.get(model_name))
+
+
+def evaluate(resource, expression, context):
+    return cached_compile(expression, "r4")(resource, context)
+
+
+result = resolve_template(resource, template, context, evaluate=evaluate)
 ```
 
 #### User-defined functions
 
-There's an ability to pass user-defined functions through fp_options
+There's an ability to pass user-defined functions to the evaluator. A custom evaluator applies them
+itself, see [custom evaluator](#custom-evaluator).
 
 Example:
 
 ```python
+from fpml import make_evaluator, resolve_template
+
 user_invocation_table = {
     "pow": {
         "fn": lambda inputs, exp=2: [i**exp for i in inputs],
@@ -720,7 +736,7 @@ result = resolve_template(
     resource,
     template,
     context,
-    fp_options={'userInvocationTable': user_invocation_table}
+    evaluate=make_evaluator(options={"userInvocationTable": user_invocation_table})
 )
 ```
 

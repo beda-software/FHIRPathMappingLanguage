@@ -1,32 +1,28 @@
 import * as fhirpath from 'fhirpath';
-import type { FPOptions } from './extract';
+import type { Evaluate, FPOptions } from './core/evaluator';
 
 export type CompiledExpression = (resource: any, context?: Context) => any[];
-
-export function compileExpression(
-    expression: string,
-    model: Model,
-    options: FPOptions,
-): CompiledExpression {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { cache, ...fhirpathOptions } = options ?? {};
-
-    return fhirpath.compile(expression, model, fhirpathOptions);
-}
 
 /**
  * LRU cache of compiled FHIRPath expressions.
  *
- * Entries are keyed by the expression only, while compilation binds the model
- * and the user-defined functions, so use a separate cache per options.
- * Zero max size disables caching.
+ * Entries are keyed by the expression only, so the model and the options are bound
+ * to the cache itself. Zero max size disables caching.
  */
 export class ExpressionCache {
     private readonly compiled = new Map<string, CompiledExpression>();
 
-    constructor(private readonly maxSize: number) {}
+    constructor(
+        private readonly maxSize: number,
+        private readonly model?: Model,
+        private readonly options?: FPOptions,
+    ) {}
 
-    compile(expression: string, model: Model, options: FPOptions): CompiledExpression {
+    makeEvaluator(): Evaluate {
+        return (resource, expression, context) => this.compile(expression)(resource, context);
+    }
+
+    compile(expression: string): CompiledExpression {
         const cached = this.compiled.get(expression);
         if (cached) {
             this.compiled.delete(expression);
@@ -35,7 +31,7 @@ export class ExpressionCache {
             return cached;
         }
 
-        const compiled = compileExpression(expression, model, options);
+        const compiled = fhirpath.compile(expression, this.model, this.options);
         if (this.maxSize > 0) {
             this.compiled.set(expression, compiled);
             if (this.compiled.size > this.maxSize) {

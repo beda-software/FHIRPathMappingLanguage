@@ -20,7 +20,6 @@ test('Test real example (aidbox)', () => {
             (context as any).QuestionnaireResponse,
             template,
             context,
-            null,
         ))),
     ).toStrictEqual(result);
 });

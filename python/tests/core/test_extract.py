@@ -2,10 +2,11 @@ import pytest
 
 from fpml.core.constants import undefined
 from fpml.core.core_types import Resource, UserInvocationTable
+from fpml.core.evaluator import make_evaluator
 from fpml.core.extract import FPMLValidationError, resolve_template
 
 
-def test_transformation_with_fp_options() -> None:
+def test_transformation_with_user_invocation_table() -> None:
     resource: Resource = {"list": [{"key": 5}, {"key": 6}, {"key": 7}]}
     user_invocation_table: UserInvocationTable = {
         "pow": {
@@ -16,7 +17,7 @@ def test_transformation_with_fp_options() -> None:
     result = resolve_template(
         resource,
         {"resourceType": "Resource", "result": "{{ list.key.pow(2) }}"},
-        fp_options={"userInvocationTable": user_invocation_table},
+        evaluate=make_evaluator(options={"userInvocationTable": user_invocation_table}),
     )
     assert result == {"resourceType": "Resource", "result": 25}
 

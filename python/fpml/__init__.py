@@ -1,7 +1,8 @@
 import importlib.metadata
 
-from .core.cache import ExpressionCache
 from .core.core_exceptions import FPMLValidationError
+from .core.core_types import Evaluate
+from .core.evaluator import FPOptions, make_evaluator
 from .core.extract import resolve_template
 
 __title__ = "fpml"
@@ -11,7 +12,9 @@ __license__ = "MIT"
 __copyright__ = "Copyright 2025 beda.software"
 
 __all__ = [
-    "ExpressionCache",
+    "Evaluate",
     "FPMLValidationError",
+    "FPOptions",
+    "make_evaluator",
     "resolve_template",
 ]

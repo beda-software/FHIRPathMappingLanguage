@@ -25,8 +25,8 @@ result = resolve_template(
     resource,
     template,
     context=None,
-    fp_options=None,
-    strict=False
+    strict=False,
+    evaluate=None
 )
 ```
 
@@ -35,8 +35,8 @@ result = resolve_template(
 - resource (Resource): The input FHIR resource to process.
 - template (Any): The template describing the transformation.
 - context (Optional[Context], optional): Additional context data. Defaults to None.
-- fp_options (Optional[FPOptions], optional): Options for controlling FHIRPath evaluation. Defaults to None.
 - strict (bool, optional): Whether to enforce strict mode. Defaults to False. See more details on [strict mode](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main?tab=readme-ov-file#strict-mode).
+- evaluate (Optional[Evaluate], optional): Evaluates one FHIRPath expression against a resource and a context. Defaults to `make_evaluator()`, which compiles every expression on every evaluation.
 
 ### Returns:
 
@@ -97,8 +97,9 @@ Output:
 ### Using FHIR data-model
 
 ```python
-from fpml import resolve_template
 from fhirpathpy.models import models
+
+from fpml import make_evaluator, resolve_template
 
 
 template = {
@@ -112,11 +113,9 @@ template = {
 
 context = {}
 
-fp_options = {
-    "model": models["r4"]
-}
+evaluate = make_evaluator(models["r4"])
 
-result = resolve_template(resource, template, context, fp_options)
+result = resolve_template(resource, template, context, evaluate=evaluate)
 print(result)
 ```
 
@@ -128,7 +127,7 @@ Output:
 ### Using user-defined functions
 
 ```python
-from fpml import resolve_template
+from fpml import make_evaluator, resolve_template
 
 
 template = {
@@ -149,11 +148,9 @@ user_invocation_table = {
     }
 }
 
-fp_options = {
-    "userInvocationTable": user_invocation_table
-}
+evaluate = make_evaluator(options={"userInvocationTable": user_invocation_table})
 
-result = resolve_template(resource, template, context, fp_options)
+result = resolve_template(resource, template, context, evaluate=evaluate)
 print(result)
 ```
 
@@ -162,30 +159,44 @@ Output:
 {'resourceType': 'Patient', 'name': [{'text': 'Name'}]}
 ```
 
-### Caching compiled expressions
+### Using a custom evaluator
 
-Parsing FHIRPath expressions is expensive, so expressions can be compiled once and reused via
-`ExpressionCache` passed through `fp_options`. The cache size is the number of compiled expressions
-kept in memory, zero disables caching.
-
-Entries are keyed by the expression only, while compilation binds the model and the user-defined
-functions, so keep one long-living cache per `fp_options`. A cache is safe to share between threads.
+By default every expression is compiled on every evaluation, which is expensive. Pass an `evaluate`
+function to reuse compiled expressions, cached the way your application needs. It takes a resource,
+an expression and a context, and returns the list of results.
 
 ```python
+from functools import lru_cache
+
+from fhirpathpy import compile
 from fhirpathpy.models import models
 
-from fpml import ExpressionCache, resolve_template
+from fpml import resolve_template
 
 
-# 1024 long expressions take up to 100mb
-fp_options = {
-    "model": models["r4"],
-    "cache": ExpressionCache(max_size=1024),
-}
+@lru_cache(maxsize=1024)
+def cached_compile(expression, model_name):
+    return compile(expression, models.get(model_name))
+
+
+def evaluate(resource, expression, context):
+    return cached_compile(expression, "r4")(resource, context)
+
 
 for resource in resources:
-    resolve_template(resource, template, context, fp_options)
+    resolve_template(resource, template, context, evaluate=evaluate)
 ```
+
+Compilation binds the model and the user-defined functions, so cache entries are only reusable for
+the same pair. Keep them in the key, like `model_name` above, when the application evaluates against
+more than one model, otherwise expressions compiled for one silently resolve against the other.
+
+A compiled expression retains its parsed AST, so the memory cost grows with the expression length:
+`1024` of them take about 11mb for short expressions and up to 290mb for 1kb ones. Size the cache for
+the number of distinct expressions your templates and questionnaires actually contain.
+
+`make_evaluator` builds the default evaluator from a model and a user-defined function table, as the
+examples above do. A custom evaluator applies both itself.
 
 ### Handling validation errors
 

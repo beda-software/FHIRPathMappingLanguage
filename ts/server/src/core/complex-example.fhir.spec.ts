@@ -1,3 +1,4 @@
+import { makeEvaluator } from './evaluator';
 import { resolveTemplate } from './extract';
 import * as fhirpath_r4_model from 'fhirpath/fhir-context/r4';
 import * as yaml from 'js-yaml';
@@ -21,7 +22,8 @@ test('Test real example (fhir)', () => {
             (context as any).QuestionnaireResponse,
             template,
             context,
-            fhirpath_r4_model,
+            false,
+            makeEvaluator(fhirpath_r4_model),
         ))),
     ).toStrictEqual(result);
 });

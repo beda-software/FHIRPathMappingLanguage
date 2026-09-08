@@ -1,3 +1,11 @@
+## 1.0.0
+
+- Accept an `evaluate` function in `resolve_template` instead of `fp_options`, so that the caller owns
+  compilation and its caching #37 (@ruscoder)
+- Move the cache of compiled expressions out of the library into the caller, `ExpressionCache` is no
+  longer exported #37 (@ruscoder)
+- Make `strict` and `evaluate` keyword-only #37 (@ruscoder)
+
 ## 0.3.1
 
 - Make `ExpressionCache` thread-safe, it raised a spurious `FPMLValidationError` when an entry was evicted mid-lookup

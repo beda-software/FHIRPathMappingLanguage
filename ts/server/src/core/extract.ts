@@ -1,4 +1,4 @@
-import { compileExpression, ExpressionCache } from './cache';
+import { Evaluate, makeEvaluator } from './evaluator';
 
 type Resource = Record<string, any>;
 type Path = Array<string | number>;
@@ -6,11 +6,6 @@ type Path = Array<string | number>;
 // TODO: looks a bit hacky to use extra node here
 // TODO: I believe it might be re-written without using it
 const rootNodeKey = '__rootNode__';
-
-export interface FPOptions {
-    userInvocationTable?: UserInvocationTable;
-    cache?: ExpressionCache;
-}
 
 export class FPMLValidationError extends Error {
     errorPath: string;
@@ -47,17 +42,15 @@ export function resolveTemplate(
     resource: Resource,
     template: any,
     context?: Context,
-    model?: Model,
-    fpOptions?: FPOptions,
     strict?: boolean,
+    evaluate?: Evaluate,
 ): any {
     const result = resolveTemplateRecur(
         [],
         strict ? guardedResourceFactory(resource) : resource,
         template,
         { context: resource, ...(context ?? {}) },
-        model,
-        fpOptions,
+        evaluate ?? makeEvaluator(),
     );
 
     // NOTE: for synchronization with Python implementation
@@ -69,8 +62,7 @@ function resolveTemplateRecur(
     resource: Resource,
     template: any,
     initialContext: Context,
-    model?: Model,
-    fpOptions?: FPOptions,
+    evaluate: Evaluate,
 ): any {
     return iterateObject(
         startPath,
@@ -83,8 +75,7 @@ function resolveTemplateRecur(
                     resource,
                     node,
                     context,
-                    model,
-                    fpOptions,
+                    evaluate,
                 );
                 const matchers = [
                     processContextBlock,
@@ -93,7 +84,7 @@ function resolveTemplateRecur(
                     processIfBlock,
                 ];
                 for (const matcher of matchers) {
-                    const result = matcher(path, resource, newNode, newContext, model, fpOptions);
+                    const result = matcher(path, resource, newNode, newContext, evaluate);
 
                     if (result) {
                         return { node: result.node, context: newContext };
@@ -103,7 +94,7 @@ function resolveTemplateRecur(
                 return { node: newNode, context: newContext };
             } else if (typeof node === 'string') {
                 return {
-                    node: processTemplateString(path, resource, node, context, model, fpOptions),
+                    node: processTemplateString(path, resource, node, context, evaluate),
                     context,
                 };
             }
@@ -118,8 +109,7 @@ function processTemplateString(
     resource: Resource,
     node: string,
     context: Context,
-    model: Model,
-    fpOptions: FPOptions,
+    evaluate: Evaluate,
 ) {
     let match:
         | RegExpExecArray
@@ -130,7 +120,7 @@ function processTemplateString(
     if (match) {
         const expr = match[1];
 
-        return evaluateExpression(path, resource, expr, context, model, fpOptions);
+        return evaluateExpression(path, resource, expr, context, evaluate);
     }
 
     const singleTemplateRegExp = /{{\+?\s*([\s\S]+?)\s*\+?}}/g;
@@ -138,7 +128,7 @@ function processTemplateString(
 
     while ((match = singleTemplateRegExp.exec(node)) !== null) {
         const expr = match[1];
-        const replacement = evaluateExpression(path, resource, expr, context, model, fpOptions)[0];
+        const replacement = evaluateExpression(path, resource, expr, context, evaluate)[0];
 
         if (replacement === undefined) {
             if (match[0].startsWith('{{+')) {
@@ -163,8 +153,7 @@ function processAssignBlock(
     resource: Resource,
     node: any,
     context: Context,
-    model: Model,
-    fpOptions: FPOptions,
+    evaluate: Evaluate,
 ): { node: any; context: Context } {
     const extendedContext = { ...context };
     const keys = Object.keys(node);
@@ -187,8 +176,7 @@ function processAssignBlock(
                             resource,
                             objValue,
                             extendedContext,
-                            model,
-                            fpOptions,
+                            evaluate,
                         ),
                     ),
                 ).forEach(([key, value]) => {
@@ -209,8 +197,7 @@ function processAssignBlock(
                         resource,
                         objValue,
                         extendedContext,
-                        model,
-                        fpOptions,
+                        evaluate,
                     ),
                 ),
             ).forEach(([key, value]) => {
@@ -231,8 +218,7 @@ function processMergeBlock(
     resource: Resource,
     node: any,
     context: Context,
-    model: Model,
-    fpOptions: FPOptions,
+    evaluate: Evaluate,
 ): { node: any } | undefined {
     const keys = Object.keys(node);
 
@@ -248,8 +234,7 @@ function processMergeBlock(
                         resource,
                         nodeValue,
                         context,
-                        model,
-                        fpOptions,
+                        evaluate,
                     );
                     if (!isPlainObject(result) && result !== null && result !== undefined) {
                         throw new FPMLValidationError('Merge block must contain object', path);
@@ -268,8 +253,7 @@ function processForBlock(
     resource: Resource,
     node: any,
     context: Context,
-    model: Model,
-    fpOptions: FPOptions,
+    evaluate: Evaluate,
 ): { node: any } | undefined {
     const keys = Object.keys(node);
 
@@ -287,7 +271,7 @@ function processForBlock(
             throw new FPMLValidationError(`For block must be presented as single key`, path);
         }
 
-        const answers = evaluateExpression(path, resource, expr, context, model, fpOptions);
+        const answers = evaluateExpression(path, resource, expr, context, evaluate);
         return {
             node: answers.map((answer, index) =>
                 resolveTemplateRecur(
@@ -299,8 +283,7 @@ function processForBlock(
                         [itemKey]: answer,
                         ...(hasIndexKey ? { [indexKey]: index } : {}),
                     },
-                    model,
-                    fpOptions,
+                    evaluate,
                 ),
             ),
         };
@@ -312,8 +295,7 @@ function processContextBlock(
     resource: Resource,
     node: any,
     context: Context,
-    model: Model,
-    fpOptions: FPOptions,
+    evaluate: Evaluate,
 ): { node: any } | undefined {
     const keys = Object.keys(node);
 
@@ -327,9 +309,9 @@ function processContextBlock(
             throw new FPMLValidationError('Context block must be presented as single key', path);
         }
 
-        const answers = evaluateExpression(path, resource, expr, context, model, fpOptions);
+        const answers = evaluateExpression(path, resource, expr, context, evaluate);
         const result: any[] = answers.map((answer) =>
-            resolveTemplateRecur(path, answer, node[contextKey], context, model, fpOptions),
+            resolveTemplateRecur(path, answer, node[contextKey], context, evaluate),
         );
 
         return { node: result };
@@ -341,8 +323,7 @@ function processIfBlock(
     resource: Resource,
     node: any,
     context: Context,
-    model: Model,
-    fpOptions: FPOptions,
+    evaluate: Evaluate,
 ): { node: any } | undefined {
     const keys = Object.keys(node);
 
@@ -377,14 +358,13 @@ function processIfBlock(
             resource,
             `iif(${expr}, true, false)`,
             context,
-            model,
-            fpOptions,
+            evaluate,
         )[0];
 
         const newNode = answer
-            ? resolveTemplateRecur(path, resource, node[ifKey], context, model, fpOptions)
+            ? resolveTemplateRecur(path, resource, node[ifKey], context, evaluate)
             : elseKey
-            ? resolveTemplateRecur(path, resource, node[elseKey], context, model, fpOptions)
+            ? resolveTemplateRecur(path, resource, node[elseKey], context, evaluate)
             : undefined;
 
         const isMergeBehavior = keys.length !== (elseKey ? 2 : 1);
@@ -461,16 +441,11 @@ export function evaluateExpression(
     resource: any,
     expression: string,
     context: Context,
-    model: Model,
-    options: FPOptions,
+    evaluate: Evaluate,
 ) {
     try {
-        const compiled = options?.cache
-            ? options.cache.compile(expression, model, options)
-            : compileExpression(expression, model, options);
-
         // fhirpath mutates context https://github.com/HL7/fhirpath.js/issues/155
-        return compiled(resource, { ...context });
+        return evaluate(resource, expression, { ...context });
     } catch (exc) {
         throw new FPMLValidationError(`Can not evaluate '${expression}': ${exc}`, path);
     }

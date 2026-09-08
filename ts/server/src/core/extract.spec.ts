@@ -9,8 +9,6 @@ describe('Transformation', () => {
                 resource,
                 { resourceType: 'Resource', result: '{{ list.key }}' },
                 {},
-                null,
-                null,
                 true,
             ),
         ).toThrow(FPMLValidationError);
@@ -22,8 +20,6 @@ describe('Transformation', () => {
                 { resourceType: 'Resource', key: [1, 2, 3] },
                 { resourceType: 'Resource', result: '{{ Resource.key }}' },
                 {},
-                null,
-                null,
                 true,
             ),
         ).toThrow(FPMLValidationError);
@@ -35,8 +31,6 @@ describe('Transformation', () => {
                 { resourceType: 'Resource', key: [1, 2, 3] },
                 { resourceType: 'Resource', result: '{{ UndefinedResource.key }}' },
                 {},
-                null,
-                null,
                 true,
             ),
         ).toThrow(FPMLValidationError);
@@ -48,8 +42,6 @@ describe('Transformation', () => {
                 resource,
                 { resourceType: 'Resource', result: '{{ %Resource.list.key }}' },
                 { Resource: resource },
-                null,
-                null,
                 true,
             ),
         ).toStrictEqual({ resourceType: 'Resource', result: 1 });
@@ -61,8 +53,6 @@ describe('Transformation', () => {
                 resource,
                 { resourceType: 'Resource', result: '{{ %context.list.key }}' },
                 { Resource: resource },
-                null,
-                null,
                 true,
             ),
         ).toStrictEqual({ resourceType: 'Resource', result: 1 });
@@ -74,8 +64,6 @@ describe('Transformation', () => {
                 resource,
                 { resourceType: 'Resource', list: [undefined, { nested: [undefined] }, undefined] },
                 {},
-                null,
-                null,
                 true,
             ),
         ).toStrictEqual({ resourceType: 'Resource' });
@@ -314,8 +302,6 @@ describe('Assign block', () => {
                     '{% assign %}': [{ varA: '{{ {} }}' }, { varB: '{{ %varA }}' }],
                     valueA: '{{ %varB }}',
                 },
-                null,
-                null,
                 null,
                 true,
             ),
