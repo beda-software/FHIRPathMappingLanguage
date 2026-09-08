@@ -1,5 +1,6 @@
 import { QuestionnaireResponse } from 'fhir/r4b';
 import { resolveTemplate } from './extract';
+import { makeEvaluator } from './evaluator';
 import * as fhirpath_r4_model from 'fhirpath/fhir-context/r4';
 
 const qr: QuestionnaireResponse = {
@@ -149,9 +150,13 @@ const result = {
 };
 
 test('Simple transformation', () => {
-    expect(resolveTemplate(qr, template1, {}, fhirpath_r4_model)).toStrictEqual(result);
+    expect(
+        resolveTemplate(qr, template1, {}, false, makeEvaluator(fhirpath_r4_model)),
+    ).toStrictEqual(result);
 });
 
 test('List transformation', () => {
-    expect(resolveTemplate(qr, template2, {}, fhirpath_r4_model)).toStrictEqual(result);
+    expect(
+        resolveTemplate(qr, template2, {}, false, makeEvaluator(fhirpath_r4_model)),
+    ).toStrictEqual(result);
 });

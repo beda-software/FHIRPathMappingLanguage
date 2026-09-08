@@ -3,13 +3,12 @@ from typing import Any, Optional, cast
 
 from fpml.core.guarded_resource import guarded_resource
 
-from .cache import compile_expression
 from .constants import root_node_key, undefined
 from .core_exceptions import FPMLValidationError
 from .core_types import (
     Context,
     DictNode,
-    FPOptions,
+    Evaluate,
     Matcher,
     MatcherResult,
     Node,
@@ -18,6 +17,7 @@ from .core_types import (
     StrNode,
     Transformer,
 )
+from .evaluator import make_evaluator
 from .utils import flatten, omit_key
 
 
@@ -25,8 +25,9 @@ def resolve_template(
     resource: Resource,
     template: Any,
     context: Optional[Context] = None,
-    fp_options: Optional[FPOptions] = None,
+    *,
     strict: bool = False,
+    evaluate: Optional[Evaluate] = None,
 ) -> Any:
     """
     Processes a given template with the specified resource and optional context.
@@ -39,10 +40,12 @@ def resolve_template(
         resource (Resource): The input FHIR resource to process.
         template (Any): The template describing the transformation.
         context (Optional[Context], optional): Additional context data. Defaults to None.
-        fp_options (Optional[FPOptions], optional): Options for controlling FHIRPath evaluation. Defaults to None.
         strict (bool, optional): Whether to enforce strict mode. Defaults to False.
             See more details on
             [strict mode](https://github.com/beda-software/FHIRPathMappingLanguage/tree/main?tab=readme-ov-file#strict-mode).
+        evaluate (Optional[Evaluate], optional): Evaluates one FHIRPath expression against a
+            resource and a context. Defaults to make_evaluator(), which compiles every
+            expression on every evaluation.
 
     Returns:
         Any: The processed output based on the template.
@@ -53,14 +56,14 @@ def resolve_template(
     See Also:
         FHIRPathMappingLanguage Specification:
         https://github.com/beda-software/FHIRPathMappingLanguage/tree/main?tab=readme-ov-file#specification
-    """  # noqa: E501
+    """
     result = resolve_template_recur(
         [],
         guarded_resource if strict else resource,
         template,
         # Pass resource as context because original is overriden by strict mode
         {"context": resource, **(context or {})},
-        fp_options=fp_options,
+        evaluate or make_evaluator(),
     )
 
     return None if result == undefined else result
@@ -71,13 +74,13 @@ def resolve_template_recur(
     resource: Resource,
     template: Any,
     context: Context,
-    fp_options: Optional[FPOptions] = None,
+    evaluate: Evaluate,
 ) -> Any:
     result = iterate_node(
         start_path,
         {root_node_key: template},
         context or {},
-        lambda path, node, context: process_node(path, resource, node, context, fp_options),
+        lambda path, node, context: process_node(path, resource, node, context, evaluate),
     )
     if isinstance(result, dict):
         return result.get(root_node_key, undefined)
@@ -90,10 +93,10 @@ def process_node(
     resource: Resource,
     node: Node,
     context: Context,
-    fp_options: Optional[FPOptions],
+    evaluate: Evaluate,
 ) -> tuple[Node, Context]:
     if isinstance(node, dict):
-        new_node, new_context = process_assign_block(path, resource, node, context, fp_options)
+        new_node, new_context = process_assign_block(path, resource, node, context, evaluate)
 
         matchers: list[Matcher] = [
             process_context_block,
@@ -103,14 +106,14 @@ def process_node(
         ]
 
         for matcher in matchers:
-            result = matcher(path, resource, new_node, new_context, fp_options)
+            result = matcher(path, resource, new_node, new_context, evaluate)
             if result:
                 return result["node"], new_context
 
         return new_node, new_context
 
     if isinstance(node, str):
-        return process_template_string(path, resource, node, context, fp_options), context
+        return process_template_string(path, resource, node, context, evaluate), context
 
     return node, context
 
@@ -159,14 +162,14 @@ def process_template_string(
     resource: Resource,
     node: StrNode,
     context: Context,
-    fp_options: Optional[FPOptions],
+    evaluate: Evaluate,
 ) -> Any:
     array_template_regexp = re.compile(r"{\[\s*([\s\S]+?)\s*\]}")
 
     match = array_template_regexp.match(node)
     if match:
         expr = match.group(1)
-        return evaluate_expression(path, resource, expr, context, fp_options)
+        return evaluate_expression(path, resource, expr, context, evaluate)
 
     single_template_regexp = re.compile(r"{{\+?\s*([\s\S]+?)\s*\+?}}")
     result = node
@@ -174,7 +177,7 @@ def process_template_string(
     for match in single_template_regexp.finditer(node):
         expr = match.group(1)
         try:
-            replacement = evaluate_expression(path, resource, expr, context, fp_options)[0]
+            replacement = evaluate_expression(path, resource, expr, context, evaluate)[0]
         except IndexError:
             return None if match.group(0).startswith("{{+") else undefined
         if match.group(0) == node:
@@ -189,7 +192,7 @@ def process_context_block(
     resource: Resource,
     node: DictNode,
     context: Context,
-    fp_options: Optional[FPOptions],
+    evaluate: Evaluate,
 ) -> Optional[MatcherResult]:
     keys = list(node.keys())
     context_regexp = re.compile(r"{{\s*(.+?)\s*}}")
@@ -202,10 +205,10 @@ def process_context_block(
         if len(keys) > 1:
             raise FPMLValidationError("Context block must be presented as single key", path)
 
-        answers = evaluate_expression(path, resource, expr, context, fp_options)
+        answers = evaluate_expression(path, resource, expr, context, evaluate)
         return {
             "node": [
-                resolve_template_recur(path, answer, node[context_key], context, fp_options)
+                resolve_template_recur(path, answer, node[context_key], context, evaluate)
                 for answer in answers
             ]
         }
@@ -218,7 +221,7 @@ def process_for_block(
     resource: Resource,
     node: DictNode,
     context: Context,
-    fp_options: Optional[FPOptions],
+    evaluate: Evaluate,
 ) -> Optional[MatcherResult]:
     keys = list(node.keys())
 
@@ -238,7 +241,7 @@ def process_for_block(
         if len(keys) > 1:
             raise FPMLValidationError("For block must be presented as single key", path)
 
-        answers = evaluate_expression(path, resource, expr, context, fp_options)
+        answers = evaluate_expression(path, resource, expr, context, evaluate)
 
         return {
             "node": [
@@ -251,7 +254,7 @@ def process_for_block(
                         item_key: answer,
                         **({index_key: index} if index_key else {}),
                     },
-                    fp_options,
+                    evaluate,
                 )
                 for index, answer in enumerate(answers)
             ]
@@ -265,7 +268,7 @@ def process_if_block(
     resource: Resource,
     node: dict[str, Any],
     context: Context,
-    fp_options: Optional[FPOptions],
+    evaluate: Evaluate,
 ) -> Optional[MatcherResult]:
     keys = list(node.keys())
 
@@ -293,15 +296,13 @@ def process_if_block(
     matches = if_regexp.match(if_key)
     expr = matches.group(1) if matches else ""
 
-    answer = evaluate_expression(path, resource, f"iif({expr}, true, false)", context, fp_options)[
-        0
-    ]
+    answer = evaluate_expression(path, resource, f"iif({expr}, true, false)", context, evaluate)[0]
 
     new_node = (
-        resolve_template_recur(path, resource, node[if_key], context, fp_options)
+        resolve_template_recur(path, resource, node[if_key], context, evaluate)
         if answer
         else (
-            resolve_template_recur(path, resource, node[else_key], context, fp_options)
+            resolve_template_recur(path, resource, node[else_key], context, evaluate)
             if else_key
             else undefined
         )
@@ -330,14 +331,14 @@ def process_merge_block(
     resource: Resource,
     node: DictNode,
     context: Context,
-    fp_options: Optional[FPOptions],
+    evaluate: Evaluate,
 ) -> Optional[MatcherResult]:
     merge_key = next((k for k in node if re.match(r"{%\s*merge\s*%}", k)), None)
     if merge_key:
         merged_node = omit_key(node, merge_key)
         values = node[merge_key] if isinstance(node[merge_key], list) else [node[merge_key]]
         for value in values:
-            result = resolve_template_recur(path, resource, value, context, fp_options)
+            result = resolve_template_recur(path, resource, value, context, evaluate)
             if not isinstance(result, dict) and result is not None and result is not undefined:
                 raise FPMLValidationError("Merge block must contain object", path)
             if result is not undefined and result is not None:
@@ -351,7 +352,7 @@ def process_assign_block(
     resource: Resource,
     node: DictNode,
     context: Context,
-    fp_options: Optional[FPOptions],
+    evaluate: Evaluate,
 ) -> tuple[DictNode, Context]:
     extended_context = context.copy()
     assign_key = next((k for k in node if re.match(r"{%\s*assign\s*%}", k)), None)
@@ -365,7 +366,7 @@ def process_assign_block(
                     )
                 result = {
                     key: resolve_template_recur(
-                        [*path, key], resource, obj_value, extended_context, fp_options
+                        [*path, key], resource, obj_value, extended_context, evaluate
                     )
                     for key, obj_value in obj.items()
                 }
@@ -375,7 +376,7 @@ def process_assign_block(
             obj = node[assign_key]
             result = {
                 key: resolve_template_recur(
-                    [*path, key], resource, obj_value, extended_context, fp_options
+                    [*path, key], resource, obj_value, extended_context, evaluate
                 )
                 for key, obj_value in obj.items()
             }
@@ -392,17 +393,10 @@ def evaluate_expression(
     resource: Resource,
     expression: str,
     context: Context,
-    fp_options: Optional[FPOptions] = None,
+    evaluate: Evaluate,
 ) -> list[Any]:
-    cache = (fp_options or {}).get("cache")
-
     try:
-        compiled = (
-            cache.compile(expression, fp_options)
-            if cache
-            else compile_expression(expression, fp_options)
-        )
-
-        return compiled(resource, context)
+        # Copy, so that an evaluator cannot leak into the sibling expressions
+        return evaluate(resource, expression, {**context})
     except Exception as exc:
         raise FPMLValidationError(f"Cannot evaluate '{expression}': {exc}", path) from exc

@@ -1,16 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { FPOptions, resolveTemplate } from './core/extract';
-import { compileExpression, ExpressionCache } from './core/cache';
+import * as fhirpath from 'fhirpath';
+import { Evaluate, FPOptions } from './core/evaluator';
+import { resolveTemplate } from './core/extract';
+import { ExpressionCache } from './expression-cache';
 
 const cacheSizeEnvVar = 'FPML_CACHE_SIZE';
 
 // Opt-in: a compiled expression retains its parsed AST, see README for the memory cost
 const cacheSize = readCacheSize();
 
-const toStringExpression = compileExpression('x.toString()', null, null);
+const toStringExpression = fhirpath.compile('x.toString()');
 
-// Options and their cache are bound to a model and must outlive requests to be reused
-const optionsByModel = new Map<Model | null, FPOptions>();
+// A cache is bound to its model and must outlive requests to be reused
+const evaluatorByModel = new Map<Model | null, Evaluate>();
 
 @Injectable()
 export class AppService {
@@ -25,34 +27,28 @@ export class AppService {
             resource,
             template,
             { root: resource, ...context },
-            model,
-            getOptions(model),
             strict,
+            getEvaluator(model),
         );
     }
 }
 
-function getOptions(model?: Model): FPOptions {
+function getEvaluator(model?: Model): Evaluate {
     const key = model ?? null;
-    const options = optionsByModel.get(key) ?? buildOptions(model);
-    optionsByModel.set(key, options);
+    const evaluate = evaluatorByModel.get(key) ?? buildEvaluator(model);
+    evaluatorByModel.set(key, evaluate);
 
-    return options;
+    return evaluate;
 }
 
-function buildOptions(model?: Model): FPOptions {
-    // The linkId travels as a variable to keep the expression constant, so it is
-    // compiled once per model and cannot break the expression when it holds a quote
-    const answersExpression = compileExpression(
+function buildEvaluator(model?: Model): Evaluate {
+    const answersExpression = fhirpath.compile(
         model
             ? 'repeat(item).where(linkId=%FPMLLinkId).answer.value'
             : 'repeat(item).where(linkId=%FPMLLinkId).answer.value.children()',
         model,
-        null,
     );
-
-    return {
-        cache: new ExpressionCache(cacheSize),
+    const options: FPOptions = {
         userInvocationTable: {
             answers: {
                 fn: (inputs, linkId: string) => answersExpression(inputs, { FPMLLinkId: linkId }),
@@ -65,6 +61,8 @@ function buildOptions(model?: Model): FPOptions {
             },
         },
     };
+
+    return new ExpressionCache(cacheSize, model, options).makeEvaluator();
 }
 
 function readCacheSize(): number {
